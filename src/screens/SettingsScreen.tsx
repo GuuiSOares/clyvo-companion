@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   Pressable,
+  Button,
   Alert,
   ScrollView,
   StyleSheet,
@@ -56,6 +57,17 @@ export default function SettingsScreen({ navigation }: Props) {
     }
   };
 
+  const handleClearLocalData = async () => {
+    try {
+      await AsyncStorage.removeItem(TUTOR_NAME_KEY);
+      setTutorName('');
+      setSavedTutorName('');
+      Alert.alert('Sucesso', 'Dados apagados com sucesso');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível apagar os dados locais.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -102,6 +114,8 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.saveButtonText}>Salvar Perfil</Text>
           </Pressable>
         </View>
+
+        <Button title="Limpar Dados Locais" onPress={handleClearLocalData} />
 
         <View style={styles.navRow}>
           <Pressable
