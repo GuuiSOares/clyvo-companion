@@ -8,8 +8,15 @@ export const commonStyles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 32,
+  },
+  screenBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 26,
@@ -26,7 +33,7 @@ export const commonStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -54,7 +61,7 @@ export const commonStyles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: colors.primaryLight,
-    borderRadius: 10,
+    borderRadius: 24,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -62,7 +69,7 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.primaryPressed,
   },
   primaryButtonText: {
-    color: colors.text,
+    color: colors.textOnDark,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -103,5 +110,70 @@ export const commonStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textNav,
+  },
+  form: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 20,
+  },
+  summaryCard: {
+    backgroundColor: colors.infoBg,
+    borderRadius: 20,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.infoBorder,
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.infoTitle,
+    marginBottom: 4,
+  },
+  summaryRow: {
+    gap: 4,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.infoLabel,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  summaryValue: {
+    fontSize: 15,
+    color: colors.infoValue,
+    lineHeight: 22,
+  },
+  welcomeCard: {
+    backgroundColor: colors.successBg,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.successText,
+    lineHeight: 22,
+  },
+  welcomePlaceholder: {
+    fontSize: 14,
+    color: colors.successMuted,
+    lineHeight: 20,
+  },
+  textArea: {
+    minHeight: 96,
+    paddingTop: 12,
+  },
+  sectionGap: {
+    marginBottom: 16,
   },
 });

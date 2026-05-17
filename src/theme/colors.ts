@@ -1,29 +1,30 @@
 export const colors = {
-  // Fundo e superfícies
   background: '#0b1220',
   surface: '#141c2e',
   surfaceElevated: '#1a2438',
   border: '#243044',
   borderSubtle: '#1e293b',
 
-  // Azul escuro (marca) + acento mais claro para CTAs e links
+  mint: '#172554',
+  teal: '#60a5fa',
+  tealDark: '#60a5fa',
+  charcoal: '#2563eb',
+
   primary: '#1e3a8a',
   primaryLight: '#2563eb',
   primaryPressed: '#1d4ed8',
   accent: '#60a5fa',
 
-  // Texto
   text: '#f1f5f9',
   textMuted: '#94a3b8',
   textSecondary: '#cbd5e1',
   textNav: '#94a3b8',
   placeholder: '#64748b',
+  textOnDark: '#ffffff',
 
-  // Inputs
   inputBg: '#0f1729',
   borderInput: '#334155',
 
-  // Feedback
   successBg: '#052e16',
   successBorder: '#166534',
   successText: '#86efac',
@@ -34,4 +35,9 @@ export const colors = {
   infoLabel: '#60a5fa',
   infoValue: '#dbeafe',
   danger: '#f87171',
+  dangerBg: '#450a0a',
+  dangerBorder: '#7f1d1d',
+
+  iconBgTeal: '#1a2438',
+  iconBgGreen: '#052e16',
 };

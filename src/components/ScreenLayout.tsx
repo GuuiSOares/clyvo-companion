@@ -4,6 +4,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -15,8 +16,8 @@ type Edge = 'top' | 'right' | 'bottom' | 'left';
 type Props = {
   children: ReactNode;
   scrollable?: boolean;
-  /** Use quando a tela tem header nativo do React Navigation (não aplica safe area no topo). */
   withHeader?: boolean;
+  withTabBar?: boolean;
   keyboard?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
 };
@@ -25,12 +26,14 @@ export default function ScreenLayout({
   children,
   scrollable = true,
   withHeader = false,
+  withTabBar = true,
   keyboard = false,
   contentContainerStyle,
 }: Props) {
-  const edges: Edge[] = withHeader
-    ? ['left', 'right', 'bottom']
-    : ['top', 'left', 'right', 'bottom'];
+  const edges: Edge[] = [];
+  if (!withHeader) edges.push('top');
+  edges.push('left', 'right');
+  if (!withTabBar) edges.push('bottom');
 
   const content = scrollable ? (
     <ScrollView
@@ -42,7 +45,7 @@ export default function ScreenLayout({
       {children}
     </ScrollView>
   ) : (
-    children
+    <View style={[styles.flex, commonStyles.screenBody]}>{children}</View>
   );
 
   const body = (

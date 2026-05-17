@@ -1,74 +1,86 @@
 import { useState } from 'react';
-import { View, Text, TextInput, FlatList, Button, StyleSheet } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { View, Text, TextInput, FlatList, StyleSheet } from 'react-native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { RootTabParamList } from '../navigation/types';
+import { colors, commonStyles } from '../theme';
+import ScreenLayout from '../components/ScreenLayout';
+import PetCard from '../components/PetCard';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Pets'>;
+type Props = BottomTabScreenProps<RootTabParamList, 'Pets'>;
 
-export default function PetsScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
+export default function PetsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const pets = [
     { id: '1', nome: 'Rex', raca: 'Pug' },
     { id: '2', nome: 'Bolinha', raca: 'Gato' },
+    { id: '3', nome: 'Thor', raca: 'Labrador' },
   ];
 
   const filteredPets = pets.filter((pet) =>
     pet.nome.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const horizontalPadding = Math.max(insets.left, insets.right, 20);
-
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
-      <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Buscar pet pelo nome"
-          placeholderTextColor={colors.placeholder}
-        />
-      </View>
+    <ScreenLayout withHeader scrollable={false}>
+      <Text style={[commonStyles.subtitle, styles.count]}>
+        {filteredPets.length} pet{filteredPets.length !== 1 ? 's' : ''} encontrado
+        {filteredPets.length !== 1 ? 's' : ''}
+      </Text>
+      <TextInput
+        style={[commonStyles.input, styles.search]}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Buscar pelo nome..."
+        placeholderTextColor={colors.placeholder}
+      />
       <FlatList
         data={filteredPets}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{
-          paddingHorizontal: horizontalPadding,
-          paddingBottom: insets.bottom + 16,
-        }}
-        renderItem={({ item }) => (
-          <View>
-            <Text>{item.nome}</Text>
-            <Text>{item.raca}</Text>
-          </View>
-        )}
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <Button title="Home" onPress={() => navigation.navigate('Home')} />
-            <Button title="Check-in" onPress={() => navigation.navigate('Checkin')} />
-            <Button title="Profile" onPress={() => navigation.navigate('Profile')} />
-            <Button title="Settings" onPress={() => navigation.navigate('Settings')} />
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderItem={({ item }) => <PetCard nome={item.nome} raca={item.raca} />}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Nenhum pet encontrado</Text>
+            <Text style={styles.emptyText}>Tente outro termo na busca.</Text>
           </View>
         }
       />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  count: {
+    marginBottom: 12,
+  },
+  search: {
+    marginBottom: 20,
+  },
+  list: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  header: {
-    paddingTop: 8,
-    paddingBottom: 8,
+  listContent: {
+    paddingBottom: 24,
   },
-  footer: {
-    marginTop: 16,
+  separator: {
+    height: 10,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingTop: 48,
     gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textMuted,
   },
 });
