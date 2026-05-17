@@ -1,25 +1,50 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { colors } from '../theme';
 
 type Props = {
   nome: string;
   raca: string;
+  fotoUri?: string;
+  selected?: boolean;
+  onPress?: () => void;
 };
 
-export default function PetCard({ nome, raca }: Props) {
+export default function PetCard({ nome, raca, fotoUri, selected, onPress }: Props) {
   const initial = nome.charAt(0).toUpperCase();
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initial}</Text>
-      </View>
+  const content = (
+    <>
+      {fotoUri ? (
+        <Image source={{ uri: fotoUri }} style={styles.photo} />
+      ) : (
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initial}</Text>
+        </View>
+      )}
       <View style={styles.info}>
         <Text style={styles.name}>{nome}</Text>
         <Text style={styles.breed}>{raca}</Text>
+        {selected ? <Text style={styles.selectedTag}>Pet ativo no app</Text> : null}
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          selected && styles.cardSelected,
+          pressed && styles.cardPressed,
+        ]}
+        onPress={onPress}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={[styles.card, selected && styles.cardSelected]}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -29,15 +54,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 14,
-    marginBottom: 0,
     borderWidth: 1,
     borderColor: colors.border,
     gap: 14,
   },
+  cardSelected: {
+    borderColor: colors.accent,
+    borderWidth: 2,
+  },
+  cardPressed: {
+    opacity: 0.9,
+  },
+  photo: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.infoBg,
     borderWidth: 1,
     borderColor: colors.infoBorder,
@@ -61,5 +99,11 @@ const styles = StyleSheet.create({
   breed: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  selectedTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.accent,
+    marginTop: 2,
   },
 });

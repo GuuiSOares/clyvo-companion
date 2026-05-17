@@ -1,27 +1,51 @@
-import { useState } from 'react';
-import { View, Text, Alert, Platform, StyleSheet } from 'react-native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { RootTabParamList } from '../navigation/types';
+import { useState, useCallback } from 'react';
+import { View, Text, Image, Alert, Platform, StyleSheet } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import ScreenLayout from '../components/ScreenLayout';
 import VitalCard from '../components/VitalCard';
 import AppButton from '../components/AppButton';
-import { colors } from '../theme';
-
-type Props = BottomTabScreenProps<RootTabParamList, 'Profile'>;
+import { colors, commonStyles } from '../theme';
+import type { RootTabParamList } from '../navigation/types';
+import type { Pet, PetVitals } from '../types/pet';
+import { getActivePet, loadPets, loadPetVitals, savePetVitals } from '../services/petData';
 
 export default function ProfileScreen() {
-  const [petVitals, setPetVitals] = useState({
-    peso: '5 kg',
-    ultimaVacina: '12/03/2025',
+  const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+  const [activePet, setActivePet] = useState<Pet | null>(null);
+  const [petVitals, setPetVitals] = useState<PetVitals>({
+    peso: 'Não informado',
+    ultimaVacina: 'Não registrada',
     statusCirurgia: 'Nenhuma pendente',
   });
 
-  const handleRegisterVaccine = () => {
+  const loadProfileData = useCallback(async () => {
+    const pets = await loadPets();
+    const pet = await getActivePet(pets);
+    setActivePet(pet);
+
+    if (pet) {
+      const vitals = await loadPetVitals(pet.id);
+      setPetVitals(vitals);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, [loadProfileData])
+  );
+
+  const handleRegisterVaccine = async () => {
+    if (!activePet) return;
+
     const hoje = new Date().toLocaleDateString('pt-BR');
+    const updatedVitals = { ...petVitals, ultimaVacina: hoje };
+
+    await savePetVitals(activePet.id, updatedVitals);
+    setPetVitals(updatedVitals);
+
     const message = 'Nova vacina registrada com sucesso!';
-
-    setPetVitals((prev) => ({ ...prev, ultimaVacina: hoje }));
-
     if (Platform.OS === 'web') {
       window.alert(message);
     } else {
@@ -29,15 +53,35 @@ export default function ProfileScreen() {
     }
   };
 
+  if (!activePet) {
+    return (
+      <ScreenLayout withHeader>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Nenhum pet selecionado</Text>
+          <Text style={styles.emptyText}>
+            Cadastre um pet em Meus Pets para ver o perfil de saúde aqui.
+          </Text>
+          <AppButton title="Ir para Meus Pets" onPress={() => navigation.navigate('Pets')} />
+        </View>
+      </ScreenLayout>
+    );
+  }
+
+  const initial = activePet.nome.charAt(0).toUpperCase();
+
   return (
     <ScreenLayout withHeader>
       <View style={styles.hero}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>R</Text>
-        </View>
+        {activePet.fotoUri ? (
+          <Image source={{ uri: activePet.fotoUri }} style={styles.photo} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+        )}
         <View>
-          <Text style={styles.petName}>Rex</Text>
-          <Text style={styles.petBreed}>Pug · Macho</Text>
+          <Text style={styles.petName}>{activePet.nome}</Text>
+          <Text style={styles.petBreed}>{activePet.raca}</Text>
         </View>
       </View>
 
@@ -50,16 +94,27 @@ export default function ProfileScreen() {
         <VitalCard label="Status da cirurgia" value={petVitals.statusCirurgia} fullWidth />
       </View>
 
-      <AppButton
-        title="Registrar nova vacina"
-        onPress={handleRegisterVaccine}
-        style={styles.action}
-      />
+      <AppButton title="Registrar nova vacina" onPress={handleRegisterVaccine} style={styles.action} />
     </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  emptyCard: {
+    ...commonStyles.card,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -70,6 +125,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 24,
+  },
+  photo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatar: {
     width: 64,

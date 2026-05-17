@@ -1,35 +1,13 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import type { Pet, CheckinRecord } from '../types/pet';
 
-const HEALTH_INFO = [
-  {
-    icon: 'paw-outline' as const,
-    label: 'Pet em foco',
-    value: 'Rex · Pug',
-  },
-  {
-    icon: 'scale-outline' as const,
-    label: 'Peso atual',
-    value: '5 kg',
-  },
-  {
-    icon: 'medkit-outline' as const,
-    label: 'Última vacina',
-    value: '12/03/2025',
-  },
-  {
-    icon: 'clipboard-outline' as const,
-    label: 'Check-in de hoje',
-    value: 'Ainda não registrado',
-    highlight: true,
-  },
-  {
-    icon: 'notifications-outline' as const,
-    label: 'Próximo lembrete',
-    value: 'Vacina do Rex · 12/10',
-  },
-];
+type Props = {
+  pets: Pet[];
+  activePet: Pet | null;
+  lastCheckin: CheckinRecord | null;
+};
 
 function InfoRow({
   icon,
@@ -55,30 +33,64 @@ function InfoRow({
   );
 }
 
-export default function HealthOverviewCard() {
+function getCheckinLabel(activePet: Pet | null, lastCheckin: CheckinRecord | null) {
+  if (!lastCheckin) return 'Ainda não registrado';
+
+  if (activePet && lastCheckin.petId === activePet.id) {
+    return `${lastCheckin.activity} · ${lastCheckin.date}`;
+  }
+
+  return `Último: ${lastCheckin.petName} (${lastCheckin.date})`;
+}
+
+export default function HealthOverviewCard({ pets, activePet, lastCheckin }: Props) {
+  if (pets.length === 0) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>Resumo de saúde</Text>
+        <Text style={styles.summary}>
+          Nenhum pet cadastrado ainda. Vá em Meus Pets para adicionar o primeiro.
+        </Text>
+      </View>
+    );
+  }
+
+  const focusPet = activePet ?? pets[0];
+  const petNames = pets.map((pet) => pet.nome).join(', ');
+  const hasActiveCheckin =
+    lastCheckin !== null && lastCheckin.petId === focusPet.id;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Resumo de saúde</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>Estável</Text>
+          <Text style={styles.badgeText}>{hasActiveCheckin ? 'Em dia' : 'Pendente'}</Text>
         </View>
       </View>
 
       <Text style={styles.summary}>
-        Informações do pet Rex com base nos dados cadastrados no app.
+        Acompanhando {focusPet.nome} ({focusPet.raca}). Total: {petNames}.
       </Text>
 
       <View style={styles.infoList}>
-        {HEALTH_INFO.map((item) => (
-          <InfoRow
-            key={item.label}
-            icon={item.icon}
-            label={item.label}
-            value={item.value}
-            highlight={item.highlight}
-          />
-        ))}
+        <InfoRow icon="paw-outline" label="Total de pets" value={`${pets.length}`} />
+        <InfoRow
+          icon="heart-outline"
+          label="Pet ativo"
+          value={`${focusPet.nome} · ${focusPet.raca}`}
+        />
+        <InfoRow
+          icon="clipboard-outline"
+          label="Último check-in"
+          value={getCheckinLabel(focusPet, lastCheckin)}
+          highlight={hasActiveCheckin}
+        />
+        <InfoRow
+          icon="notifications-outline"
+          label="Perfil"
+          value="Vacinas e dados vitais no menu Perfil"
+        />
       </View>
     </View>
   );

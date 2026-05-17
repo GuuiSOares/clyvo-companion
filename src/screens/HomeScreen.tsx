@@ -1,38 +1,65 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RootTabParamList } from '../navigation/types';
+import type { Pet, CheckinRecord } from '../types/pet';
+import { TUTOR_NAME_KEY } from '../constants/storage';
+import { loadPets, getActivePet, loadLastCheckin } from '../services/petData';
 import { colors } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import AppLogo from '../components/AppLogo';
 import QuickActionCard from '../components/QuickActionCard';
 import HealthOverviewCard from '../components/HealthOverviewCard';
 
-const TUTOR_NAME_KEY = '@clyvo/tutorName';
-
 type Props = BottomTabScreenProps<RootTabParamList, 'Home'>;
+
+function getPetsSubtitle(pets: Pet[]) {
+  if (pets.length === 0) return 'Nenhum pet cadastrado';
+  if (pets.length === 1) return `1 pet (${pets[0].nome})`;
+  const names = pets
+    .slice(0, 2)
+    .map((pet) => pet.nome)
+    .join(', ');
+  return pets.length > 2 ? `${pets.length} pets (${names}...)` : `${pets.length} pets (${names})`;
+}
 
 export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const [tutorName, setTutorName] = useState('tutor');
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [activePet, setActivePet] = useState<Pet | null>(null);
+  const [lastCheckin, setLastCheckin] = useState<CheckinRecord | null>(null);
 
-  const loadTutorName = useCallback(async () => {
-    const stored = await AsyncStorage.getItem(TUTOR_NAME_KEY);
-    if (stored) setTutorName(stored.split(' ')[0]);
+  const loadHomeData = useCallback(async () => {
+    const [storedName, petsList, checkin] = await Promise.all([
+      AsyncStorage.getItem(TUTOR_NAME_KEY),
+      loadPets(),
+      loadLastCheckin(),
+    ]);
+
+    if (storedName) setTutorName(storedName.split(' ')[0]);
+
+    setPets(petsList);
+    setLastCheckin(checkin);
+    const active = await getActivePet(petsList);
+    setActivePet(active);
   }, []);
-
-  useEffect(() => {
-    loadTutorName();
-  }, [loadTutorName]);
 
   useFocusEffect(
     useCallback(() => {
-      loadTutorName();
-    }, [loadTutorName])
+      loadHomeData();
+    }, [loadHomeData])
   );
+
+  const remindersSubtitle =
+    pets.length === 0
+      ? 'Cadastre um pet primeiro'
+      : activePet
+        ? `Vacinas de ${activePet.nome}`
+        : 'Ver perfil do pet';
 
   return (
     <ScreenLayout contentContainerStyle={styles.homeContent}>
@@ -51,7 +78,13 @@ export default function HomeScreen({ navigation }: Props) {
             <Ionicons name="calendar-outline" size={16} color={colors.textOnDark} />
             <Text style={styles.heroButtonText}>Iniciar check-in de hoje</Text>
           </Pressable>
-          <Text style={styles.heroCaption}>Monitore a recuperação do seu pet em minutos.</Text>
+          <Text style={styles.heroCaption}>
+            {activePet
+              ? lastCheckin?.petId === activePet.id
+                ? `Último check-in de ${activePet.nome}: ${lastCheckin.date}`
+                : `Triagem diária de ${activePet.nome}`
+              : 'Cadastre um pet para começar a triagem.'}
+          </Text>
         </View>
         <Text style={styles.heroIllustration}>🐕🐈</Text>
       </View>
@@ -59,26 +92,26 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.quickActions}>
         <QuickActionCard
           title="Meus Pets"
-          subtitle="2 pets (Rex, Bolinha)"
+          subtitle={getPetsSubtitle(pets)}
           icon={<MaterialCommunityIcons name="paw" size={22} color={colors.accent} />}
           onPress={() => navigation.navigate('Pets')}
         />
         <QuickActionCard
           title="Registros"
-          subtitle="Último check-in: hoje"
+          subtitle="Check-in diário"
           icon={<Ionicons name="clipboard-outline" size={22} color={colors.accent} />}
           onPress={() => navigation.navigate('Checkin')}
         />
         <QuickActionCard
           title="Lembretes"
-          subtitle="Rex: vacina (12/10)"
+          subtitle={remindersSubtitle}
           icon={<Ionicons name="notifications-outline" size={22} color={colors.accent} />}
           iconBackground={colors.iconBgGreen}
           onPress={() => navigation.navigate('Profile')}
         />
       </View>
 
-      <HealthOverviewCard />
+      <HealthOverviewCard pets={pets} activePet={activePet} lastCheckin={lastCheckin} />
     </ScreenLayout>
   );
 }

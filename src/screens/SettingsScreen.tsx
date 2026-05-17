@@ -5,9 +5,9 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList } from '../navigation/types';
 import ScreenLayout from '../components/ScreenLayout';
 import AppButton from '../components/AppButton';
+import { TUTOR_NAME_KEY } from '../constants/storage';
+import { clearAllAppData } from '../services/petData';
 import { colors, commonStyles } from '../theme';
-
-const TUTOR_NAME_KEY = '@clyvo/tutorName';
 
 type Props = BottomTabScreenProps<RootTabParamList, 'Settings'>;
 
@@ -59,10 +59,10 @@ export default function SettingsScreen() {
 
   const handleClearLocalData = async () => {
     try {
-      await AsyncStorage.removeItem(TUTOR_NAME_KEY);
+      await clearAllAppData();
       setTutorName('');
       setSavedTutorName('');
-      showAlert('Sucesso', 'Dados apagados com sucesso');
+      showAlert('Sucesso', 'Todos os dados do app foram apagados.');
     } catch {
       showAlert('Erro', 'Não foi possível apagar os dados locais.');
     }
