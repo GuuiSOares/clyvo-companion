@@ -1,16 +1,8 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import ScreenLayout from '../components/ScreenLayout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkin'>;
 
@@ -26,14 +18,7 @@ export default function CheckinScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+    <ScreenLayout withHeader keyboard>
         <Text style={styles.title}>Triagem Diária do Pet</Text>
         <Text style={styles.subtitle}>
           Preencha os campos abaixo para registrar o check-in de hoje.
@@ -120,21 +105,11 @@ export default function CheckinScreen({ navigation }: Props) {
             <Text style={styles.navButtonText}>Pets</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-    paddingBottom: 32,
-  },
   title: {
     fontSize: 24,
     fontWeight: '700',

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Button, Alert, Platform } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import ScreenLayout from '../components/ScreenLayout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -26,7 +27,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <View>
+    <ScreenLayout withHeader>
       <Text>Histórico do Pet</Text>
       <Text>Peso atual: {petVitals.peso}</Text>
       <Text>Última vacina: {petVitals.ultimaVacina}</Text>
@@ -36,6 +37,6 @@ export default function ProfileScreen({ navigation }: Props) {
       <Button title="Pets" onPress={() => navigation.navigate('Pets')} />
       <Button title="Check-in" onPress={() => navigation.navigate('Checkin')} />
       <Button title="Settings" onPress={() => navigation.navigate('Settings')} />
-    </View>
+    </ScreenLayout>
   );
 }

@@ -1,19 +1,9 @@
 import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Button,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, Pressable, Button, Alert, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import ScreenLayout from '../components/ScreenLayout';
 
 const TUTOR_NAME_KEY = '@clyvo/tutorName';
 
@@ -69,14 +59,7 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+    <ScreenLayout withHeader keyboard>
         <Text style={styles.title}>Configurações</Text>
         <Text style={styles.subtitle}>Gerencie os dados do seu perfil localmente.</Text>
 
@@ -131,21 +114,11 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.navButtonText}>Profile</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-    paddingBottom: 32,
-  },
   title: {
     fontSize: 24,
     fontWeight: '700',
