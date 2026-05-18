@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import type { Pet, CheckinRecord } from '../types/pet';
+import { formatPetSpecies } from '../constants/petSpecies';
 
 type Props = {
   pets: Pet[];
@@ -70,7 +71,8 @@ export default function HealthOverviewCard({ pets, activePet, lastCheckin }: Pro
       </View>
 
       <Text style={styles.summary}>
-        Acompanhando {focusPet.nome} ({focusPet.raca}). Total: {petNames}.
+        Acompanhando {focusPet.nome} ({formatPetSpecies(focusPet.especie, focusPet.raca)}). Total:{' '}
+        {petNames}.
       </Text>
 
       <View style={styles.infoList}>
@@ -78,7 +80,7 @@ export default function HealthOverviewCard({ pets, activePet, lastCheckin }: Pro
         <InfoRow
           icon="heart-outline"
           label="Pet ativo"
-          value={`${focusPet.nome} · ${focusPet.raca}`}
+          value={`${focusPet.nome} · ${formatPetSpecies(focusPet.especie, focusPet.raca)}`}
         />
         <InfoRow
           icon="clipboard-outline"

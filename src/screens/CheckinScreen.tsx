@@ -13,6 +13,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import ScreenLayout from '../components/ScreenLayout';
 import AppButton from '../components/AppButton';
+import ActivitySelector from '../components/ActivitySelector';
+import type { PetActivityLevel } from '../constants/activityLevels';
 import { colors, commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
@@ -28,7 +30,7 @@ export default function CheckinScreen() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
   const [petName, setPetName] = useState('');
-  const [activity, setActivity] = useState('');
+  const [activity, setActivity] = useState<PetActivityLevel | null>(null);
   const [observations, setObservations] = useState('');
 
   const loadCheckinData = useCallback(async () => {
@@ -57,7 +59,6 @@ export default function CheckinScreen() {
   };
 
   const handleSave = async () => {
-    const trimmedActivity = activity.trim();
     const trimmedObservations = observations.trim();
 
     if (!selectedPetId || !petName.trim()) {
@@ -65,20 +66,20 @@ export default function CheckinScreen() {
       return;
     }
 
-    if (!trimmedActivity) {
-      Alert.alert('Atenção', 'Informe como está a atividade do pet hoje.');
+    if (!activity) {
+      Alert.alert('Atenção', 'Selecione como está a atividade do pet hoje.');
       return;
     }
 
     await saveLastCheckin({
       petId: selectedPetId,
       petName: petName.trim(),
-      activity: trimmedActivity,
+      activity,
       observations: trimmedObservations,
       date: new Date().toLocaleDateString('pt-BR'),
     });
 
-    setActivity('');
+    setActivity(null);
     setObservations('');
 
     Alert.alert('Sucesso', `Check-in de ${petName} salvo com sucesso!`);
@@ -92,7 +93,10 @@ export default function CheckinScreen() {
           <Text style={styles.emptyText}>
             Cadastre um pet em Meus Pets antes de fazer a triagem diária.
           </Text>
-          <AppButton title="Cadastrar pet" onPress={() => navigation.navigate('Pets')} />
+          <AppButton
+            title="Cadastrar pet"
+            onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
+          />
         </View>
       </ScreenLayout>
     );
@@ -115,7 +119,13 @@ export default function CheckinScreen() {
             ]}
             onPress={() => handleSelectPet(pet)}
           >
-            <Image source={{ uri: pet.fotoUri }} style={styles.petChipPhoto} />
+            {pet.fotoUri ? (
+              <Image source={{ uri: pet.fotoUri }} style={styles.petChipPhoto} />
+            ) : (
+              <View style={styles.petChipAvatar}>
+                <Text style={styles.petChipAvatarText}>{pet.nome.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
             <Text style={styles.petChipName}>{pet.nome}</Text>
           </Pressable>
         ))}
@@ -132,16 +142,7 @@ export default function CheckinScreen() {
           />
         </View>
 
-        <View style={commonStyles.field}>
-          <Text style={commonStyles.label}>Como está a atividade dele hoje?</Text>
-          <TextInput
-            style={commonStyles.input}
-            value={activity}
-            onChangeText={setActivity}
-            placeholder="Ex: Normal, Quieto"
-            placeholderTextColor={colors.placeholder}
-          />
-        </View>
+        <ActivitySelector value={activity} onChange={setActivity} />
 
         <View style={commonStyles.field}>
           <Text style={commonStyles.label}>Observações</Text>
@@ -176,7 +177,7 @@ export default function CheckinScreen() {
         </View>
         <View style={commonStyles.summaryRow}>
           <Text style={commonStyles.summaryLabel}>Atividade</Text>
-          <Text style={commonStyles.summaryValue}>{activity.trim() || '—'}</Text>
+          <Text style={commonStyles.summaryValue}>{activity ?? '—'}</Text>
         </View>
         <View style={commonStyles.summaryRow}>
           <Text style={commonStyles.summaryLabel}>Observações</Text>
@@ -235,6 +236,22 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginBottom: 6,
+  },
+  petChipAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 6,
+    backgroundColor: colors.infoBg,
+    borderWidth: 1,
+    borderColor: colors.infoBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  petChipAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.accent,
   },
   petChipName: {
     fontSize: 12,
