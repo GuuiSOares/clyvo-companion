@@ -94,7 +94,7 @@ export default function HomeScreen({ navigation }: Props) {
           title="Meus Pets"
           subtitle={getPetsSubtitle(pets)}
           icon={<MaterialCommunityIcons name="paw" size={22} color={colors.accent} />}
-          onPress={() => navigation.navigate('Pets')}
+          onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
         />
         <QuickActionCard
           title="Registros"

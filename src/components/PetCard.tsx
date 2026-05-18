@@ -1,19 +1,31 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import type { PetSpecies } from '../constants/petSpecies';
 
 type Props = {
   nome: string;
+  especie?: PetSpecies;
   raca: string;
+  peso?: string;
   fotoUri?: string;
   selected?: boolean;
   onPress?: () => void;
 };
 
-export default function PetCard({ nome, raca, fotoUri, selected, onPress }: Props) {
+export default function PetCard({ nome, peso, fotoUri, selected, onPress }: Props) {
   const initial = nome.charAt(0).toUpperCase();
+  const subtitle = peso?.trim() || 'Peso não informado';
 
-  const content = (
-    <>
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        selected && styles.cardSelected,
+        pressed && styles.cardPressed,
+      ]}
+      onPress={onPress}
+    >
       {fotoUri ? (
         <Image source={{ uri: fotoUri }} style={styles.photo} />
       ) : (
@@ -21,30 +33,16 @@ export default function PetCard({ nome, raca, fotoUri, selected, onPress }: Prop
           <Text style={styles.avatarText}>{initial}</Text>
         </View>
       )}
+
       <View style={styles.info}>
         <Text style={styles.name}>{nome}</Text>
-        <Text style={styles.breed}>{raca}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
         {selected ? <Text style={styles.selectedTag}>Pet ativo no app</Text> : null}
       </View>
-    </>
+
+      <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
+    </Pressable>
   );
-
-  if (onPress) {
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.card,
-          selected && styles.cardSelected,
-          pressed && styles.cardPressed,
-        ]}
-        onPress={onPress}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
-  return <View style={[styles.card, selected && styles.cardSelected]}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -52,30 +50,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 14,
+    gap: 12,
   },
   cardSelected: {
     borderColor: colors.accent,
     borderWidth: 2,
   },
   cardPressed: {
-    opacity: 0.9,
+    opacity: 0.92,
   },
   photo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
     backgroundColor: colors.infoBg,
     borderWidth: 1,
     borderColor: colors.infoBorder,
@@ -83,20 +81,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.accent,
   },
   info: {
     flex: 1,
     gap: 4,
+    justifyContent: 'center',
   },
   name: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
-  breed: {
+  subtitle: {
     fontSize: 14,
     color: colors.textMuted,
   },

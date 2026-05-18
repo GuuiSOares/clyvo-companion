@@ -7,7 +7,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import HomeScreen from './src/screens/HomeScreen';
-import PetsScreen from './src/screens/PetsScreen';
+import PetsNavigator from './src/navigation/PetsNavigator';
 import CheckinScreen from './src/screens/CheckinScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -71,7 +71,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Pets"
-        component={PetsScreen}
+        component={PetsNavigator}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
