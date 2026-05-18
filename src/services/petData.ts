@@ -9,9 +9,7 @@ import {
 import type { Pet, PetVitals, CheckinRecord } from '../types/pet';
 
 const defaultVitals: PetVitals = {
-  peso: 'Não informado',
   ultimaVacina: 'Não registrada',
-  statusCirurgia: 'Nenhuma pendente',
 };
 
 export async function loadPets(): Promise<Pet[]> {

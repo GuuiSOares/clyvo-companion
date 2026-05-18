@@ -1,20 +1,23 @@
+import type { PetActivityLevel } from '../constants/activityLevels';
+import type { PetSpecies } from '../constants/petSpecies';
+
 export type Pet = {
   id: string;
   nome: string;
   raca: string;
-  fotoUri: string;
+  especie?: PetSpecies;
+  peso?: string;
+  fotoUri?: string;
 };
 
 export type PetVitals = {
-  peso: string;
   ultimaVacina: string;
-  statusCirurgia: string;
 };
 
 export type CheckinRecord = {
   petId: string;
   petName: string;
-  activity: string;
+  activity: PetActivityLevel;
   observations: string;
   date: string;
 };

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   View,
   Text,
@@ -12,24 +13,33 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, commonStyles } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import PetCard from '../components/PetCard';
+import SpeciesSelector from '../components/SpeciesSelector';
+import type { PetSpecies } from '../constants/petSpecies';
+import type { PetsStackParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
 import {
   loadPets as fetchPets,
   savePets as persistPets,
   setSelectedPetId,
   getActivePet,
+  savePetVitals,
 } from '../services/petData';
+type PetsListNav = NativeStackNavigationProp<PetsStackParamList, 'PetsList'>;
+
 export default function PetsScreen() {
+  const navigation = useNavigation<PetsListNav>();
   const [pets, setPets] = useState<Pet[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [nome, setNome] = useState('');
+  const [especie, setEspecie] = useState<PetSpecies | null>(null);
   const [raca, setRaca] = useState('');
+  const [peso, setPeso] = useState('');
   const [fotoUri, setFotoUri] = useState('');
   const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
 
@@ -57,7 +67,9 @@ export default function PetsScreen() {
 
   const resetForm = () => {
     setNome('');
+    setEspecie(null);
     setRaca('');
+    setPeso('');
     setFotoUri('');
   };
 
@@ -88,27 +100,26 @@ export default function PetsScreen() {
   const handleSavePet = async () => {
     const trimmedNome = nome.trim();
     const trimmedRaca = raca.trim();
+    const trimmedPeso = peso.trim();
 
-    if (!trimmedNome || !trimmedRaca) {
-      Alert.alert('Atenção', 'Preencha o nome e a raça do pet.');
-      return;
-    }
-
-    if (!fotoUri) {
-      Alert.alert('Atenção', 'Escolha uma foto para o pet.');
+    if (!trimmedNome || !especie || !trimmedRaca || !trimmedPeso) {
+      Alert.alert('Atenção', 'Preencha o nome, o tipo, a raça e o peso do pet.');
       return;
     }
 
     const newPet: Pet = {
       id: Date.now().toString(),
       nome: trimmedNome,
+      especie,
       raca: trimmedRaca,
-      fotoUri,
+      peso: trimmedPeso,
+      ...(fotoUri ? { fotoUri } : {}),
     };
 
     try {
       const updatedPets = [...pets, newPet];
       await savePets(updatedPets);
+      await savePetVitals(newPet.id, { ultimaVacina: 'Não registrada' });
       await setSelectedPetId(newPet.id);
       setSelectedPetIdState(newPet.id);
       closeModal();
@@ -117,10 +128,6 @@ export default function PetsScreen() {
       Alert.alert('Erro', 'Não foi possível salvar o pet.');
     }
   };
-
-  const filteredPets = pets.filter((pet) =>
-    pet.nome.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <ScreenLayout withHeader scrollable={false}>
@@ -132,23 +139,14 @@ export default function PetsScreen() {
       </Pressable>
 
       <Text style={[commonStyles.subtitle, styles.hint]}>
-        Toque em um pet para usá-lo no check-in e no perfil.
+        Toque no pet para ver os detalhes. O pet ativo é definido na tela de detalhes.
       </Text>
       <Text style={[commonStyles.subtitle, styles.count]}>
-        {filteredPets.length} pet{filteredPets.length !== 1 ? 's' : ''} encontrado
-        {filteredPets.length !== 1 ? 's' : ''}
+        {pets.length} pet{pets.length !== 1 ? 's' : ''} cadastrado{pets.length !== 1 ? 's' : ''}
       </Text>
 
-      <TextInput
-        style={[commonStyles.input, styles.search]}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Buscar pelo nome..."
-        placeholderTextColor={colors.placeholder}
-      />
-
       <FlatList
-        data={filteredPets}
+        data={pets}
         keyExtractor={(item) => item.id}
         style={styles.list}
         contentContainerStyle={styles.listContent}
@@ -157,22 +155,19 @@ export default function PetsScreen() {
         renderItem={({ item }) => (
           <PetCard
             nome={item.nome}
+            especie={item.especie}
             raca={item.raca}
+            peso={item.peso}
             fotoUri={item.fotoUri}
             selected={item.id === selectedPetId}
-            onPress={async () => {
-              await setSelectedPetId(item.id);
-              setSelectedPetIdState(item.id);
-            }}
+            onPress={() => navigation.navigate('PetDetails', { petId: item.id })}
           />
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Nenhum pet encontrado</Text>
+            <Text style={styles.emptyTitle}>Nenhum pet cadastrado</Text>
             <Text style={styles.emptyText}>
-              {pets.length === 0
-                ? 'Cadastre seu primeiro pet usando o botão acima.'
-                : 'Tente outro termo na busca.'}
+              Cadastre seu primeiro pet usando o botão acima.
             </Text>
           </View>
         }
@@ -187,6 +182,12 @@ export default function PetsScreen() {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Cadastrar Novo Pet</Text>
 
+              <ScrollView
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                contentContainerStyle={styles.modalScrollContent}
+              >
               <View style={commonStyles.field}>
                 <Text style={commonStyles.label}>Nome do Pet</Text>
                 <TextInput
@@ -197,6 +198,8 @@ export default function PetsScreen() {
                   placeholderTextColor={colors.placeholder}
                 />
               </View>
+
+              <SpeciesSelector value={especie} onChange={setEspecie} />
 
               <View style={commonStyles.field}>
                 <Text style={commonStyles.label}>Raça</Text>
@@ -209,11 +212,23 @@ export default function PetsScreen() {
                 />
               </View>
 
+              <View style={commonStyles.field}>
+                <Text style={commonStyles.label}>Peso</Text>
+                <TextInput
+                  style={commonStyles.input}
+                  value={peso}
+                  onChangeText={setPeso}
+                  placeholder="Ex: 12 kg"
+                  placeholderTextColor={colors.placeholder}
+                  keyboardType="default"
+                />
+              </View>
+
               <Pressable
                 style={({ pressed }) => [styles.pickPhotoButton, pressed && styles.pickPhotoButtonPressed]}
                 onPress={handlePickImage}
               >
-                <Text style={styles.pickPhotoButtonText}>Escolher Foto do Pet</Text>
+                <Text style={styles.pickPhotoButtonText}>Escolher foto (opcional)</Text>
               </Pressable>
 
               {fotoUri ? <Image source={{ uri: fotoUri }} style={styles.thumbnail} /> : null}
@@ -235,6 +250,7 @@ export default function PetsScreen() {
               >
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </Pressable>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -263,10 +279,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   count: {
-    marginBottom: 12,
-  },
-  search: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   list: {
     flex: 1,
@@ -308,6 +321,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderWidth: 1,
     borderColor: colors.border,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
   },
   modalTitle: {
     fontSize: 20,

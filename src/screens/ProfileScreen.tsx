@@ -7,17 +7,14 @@ import VitalCard from '../components/VitalCard';
 import AppButton from '../components/AppButton';
 import { colors, commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
-import type { Pet, PetVitals } from '../types/pet';
+import type { Pet } from '../types/pet';
+import { formatPetSpecies } from '../constants/petSpecies';
 import { getActivePet, loadPets, loadPetVitals, savePetVitals } from '../services/petData';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const [activePet, setActivePet] = useState<Pet | null>(null);
-  const [petVitals, setPetVitals] = useState<PetVitals>({
-    peso: 'Não informado',
-    ultimaVacina: 'Não registrada',
-    statusCirurgia: 'Nenhuma pendente',
-  });
+  const [ultimaVacina, setUltimaVacina] = useState('Não registrada');
 
   const loadProfileData = useCallback(async () => {
     const pets = await loadPets();
@@ -26,7 +23,7 @@ export default function ProfileScreen() {
 
     if (pet) {
       const vitals = await loadPetVitals(pet.id);
-      setPetVitals(vitals);
+      setUltimaVacina(vitals.ultimaVacina);
     }
   }, []);
 
@@ -40,10 +37,10 @@ export default function ProfileScreen() {
     if (!activePet) return;
 
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const updatedVitals = { ...petVitals, ultimaVacina: hoje };
+    const updatedVitals = { ultimaVacina: hoje };
 
     await savePetVitals(activePet.id, updatedVitals);
-    setPetVitals(updatedVitals);
+    setUltimaVacina(hoje);
 
     const message = 'Nova vacina registrada com sucesso!';
     if (Platform.OS === 'web') {
@@ -61,13 +58,17 @@ export default function ProfileScreen() {
           <Text style={styles.emptyText}>
             Cadastre um pet em Meus Pets para ver o perfil de saúde aqui.
           </Text>
-          <AppButton title="Ir para Meus Pets" onPress={() => navigation.navigate('Pets')} />
+          <AppButton
+            title="Ir para Meus Pets"
+            onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
+          />
         </View>
       </ScreenLayout>
     );
   }
 
   const initial = activePet.nome.charAt(0).toUpperCase();
+  const pesoLabel = activePet.peso?.trim() || 'Não informado';
 
   return (
     <ScreenLayout withHeader>
@@ -81,17 +82,14 @@ export default function ProfileScreen() {
         )}
         <View>
           <Text style={styles.petName}>{activePet.nome}</Text>
-          <Text style={styles.petBreed}>{activePet.raca}</Text>
+          <Text style={styles.petBreed}>{formatPetSpecies(activePet.especie, activePet.raca)}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Dados vitais</Text>
+      <Text style={styles.sectionTitle}>Dados de saúde</Text>
       <View style={styles.vitalsGrid}>
-        <VitalCard label="Peso atual" value={petVitals.peso} />
-        <VitalCard label="Última vacina" value={petVitals.ultimaVacina} />
-      </View>
-      <View style={styles.vitalsFull}>
-        <VitalCard label="Status da cirurgia" value={petVitals.statusCirurgia} fullWidth />
+        <VitalCard label="Peso" value={pesoLabel} />
+        <VitalCard label="Última vacina" value={ultimaVacina} />
       </View>
 
       <AppButton title="Registrar nova vacina" onPress={handleRegisterVaccine} style={styles.action} />
@@ -169,9 +167,6 @@ const styles = StyleSheet.create({
   vitalsGrid: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10,
-  },
-  vitalsFull: {
     marginBottom: 24,
   },
   action: {
