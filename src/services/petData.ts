@@ -1,16 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   TUTOR_NAME_KEY,
+  TUTOR_PROFILE_KEY,
   PETS_STORAGE_KEY,
-  SELECTED_PET_ID_KEY,
   LAST_CHECKIN_KEY,
-  vitalsStorageKey,
 } from '../constants/storage';
-import type { Pet, PetVitals, CheckinRecord } from '../types/pet';
-
-const defaultVitals: PetVitals = {
-  ultimaVacina: 'Não registrada',
-};
+import { clearAuthData } from './authData';
+import type { Pet, CheckinRecord } from '../types/pet';
 
 export async function loadPets(): Promise<Pet[]> {
   const stored = await AsyncStorage.getItem(PETS_STORAGE_KEY);
@@ -22,26 +18,13 @@ export async function savePets(pets: Pet[]): Promise<void> {
   await AsyncStorage.setItem(PETS_STORAGE_KEY, JSON.stringify(pets));
 }
 
-export async function setSelectedPetId(petId: string): Promise<void> {
-  await AsyncStorage.setItem(SELECTED_PET_ID_KEY, petId);
-}
-
-export async function getActivePet(pets: Pet[]): Promise<Pet | null> {
+export function getHighlightedPet(pets: Pet[], lastCheckin: CheckinRecord | null): Pet | null {
   if (pets.length === 0) return null;
-
-  const selectedId = await AsyncStorage.getItem(SELECTED_PET_ID_KEY);
-  const selected = pets.find((pet) => pet.id === selectedId);
-  return selected ?? pets[0];
-}
-
-export async function loadPetVitals(petId: string): Promise<PetVitals> {
-  const stored = await AsyncStorage.getItem(vitalsStorageKey(petId));
-  if (!stored) return { ...defaultVitals };
-  return JSON.parse(stored) as PetVitals;
-}
-
-export async function savePetVitals(petId: string, vitals: PetVitals): Promise<void> {
-  await AsyncStorage.setItem(vitalsStorageKey(petId), JSON.stringify(vitals));
+  if (lastCheckin) {
+    const fromCheckin = pets.find((pet) => pet.id === lastCheckin.petId);
+    if (fromCheckin) return fromCheckin;
+  }
+  return pets[0];
 }
 
 export async function loadLastCheckin(): Promise<CheckinRecord | null> {
@@ -55,13 +38,11 @@ export async function saveLastCheckin(checkin: CheckinRecord): Promise<void> {
 }
 
 export async function clearAllAppData(): Promise<void> {
-  const pets = await loadPets();
-  const keys = [
+  await clearAuthData();
+  await AsyncStorage.multiRemove([
     TUTOR_NAME_KEY,
+    TUTOR_PROFILE_KEY,
     PETS_STORAGE_KEY,
-    SELECTED_PET_ID_KEY,
     LAST_CHECKIN_KEY,
-    ...pets.map((pet) => vitalsStorageKey(pet.id)),
-  ];
-  await AsyncStorage.multiRemove(keys);
+  ]);
 }

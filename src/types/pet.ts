@@ -10,10 +10,6 @@ export type Pet = {
   fotoUri?: string;
 };
 
-export type PetVitals = {
-  ultimaVacina: string;
-};
-
 export type CheckinRecord = {
   petId: string;
   petName: string;

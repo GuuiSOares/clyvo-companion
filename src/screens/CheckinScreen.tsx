@@ -11,39 +11,52 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/ScreenLayout';
-import AppButton from '../components/AppButton';
 import ActivitySelector from '../components/ActivitySelector';
 import type { PetActivityLevel } from '../constants/activityLevels';
+import { getWellnessHint, getWellnessLabel } from '../constants/activityLevels';
+import { formatPetSpecies } from '../constants/petSpecies';
 import { colors, commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
-import {
-  getActivePet,
-  loadPets,
-  saveLastCheckin,
-  setSelectedPetId,
-} from '../services/petData';
+import { loadPets, loadLastCheckin, saveLastCheckin } from '../services/petData';
+import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
+import FlowHintCard from '../components/FlowHintCard';
 
 export default function CheckinScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+  const [tutorReady, setTutorReady] = useState(false);
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
-  const [petName, setPetName] = useState('');
-  const [activity, setActivity] = useState<PetActivityLevel | null>(null);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  const [wellness, setWellness] = useState<PetActivityLevel | null>(null);
   const [observations, setObservations] = useState('');
 
   const loadCheckinData = useCallback(async () => {
-    const petsList = await loadPets();
+    const tutor = await loadTutorProfile();
+    setTutorReady(hasTutorProfile(tutor));
+
+    const [petsList, lastCheckin] = await Promise.all([loadPets(), loadLastCheckin()]);
     setPets(petsList);
-    const active = await getActivePet(petsList);
-    if (active) {
-      setSelectedPetIdState(active.id);
-      setPetName(active.nome);
-    } else {
-      setSelectedPetIdState(null);
-      setPetName('');
+
+    if (petsList.length === 1) {
+      setSelectedPetIdState(petsList[0].id);
+      setSelectedPet(petsList[0]);
+      return;
     }
+
+    if (lastCheckin) {
+      const pet = petsList.find((item) => item.id === lastCheckin.petId);
+      if (pet) {
+        setSelectedPetIdState(pet.id);
+        setSelectedPet(pet);
+        return;
+      }
+    }
+
+    setSelectedPetIdState(null);
+    setSelectedPet(null);
   }, []);
 
   useFocusEffect(
@@ -52,63 +65,80 @@ export default function CheckinScreen() {
     }, [loadCheckinData])
   );
 
-  const handleSelectPet = async (pet: Pet) => {
-    await setSelectedPetId(pet.id);
+  const handleSelectPet = (pet: Pet) => {
     setSelectedPetIdState(pet.id);
-    setPetName(pet.nome);
+    setSelectedPet(pet);
   };
 
   const handleSave = async () => {
     const trimmedObservations = observations.trim();
 
-    if (!selectedPetId || !petName.trim()) {
-      Alert.alert('Atenção', 'Selecione um pet cadastrado para fazer o check-in.');
+    if (!selectedPet) {
+      Alert.alert('Atenção', 'Selecione qual pet você está acompanhando hoje.');
       return;
     }
 
-    if (!activity) {
-      Alert.alert('Atenção', 'Selecione como está a atividade do pet hoje.');
+    if (!wellness) {
+      Alert.alert('Atenção', 'Escolha como o pet está se comportando hoje.');
       return;
     }
 
     await saveLastCheckin({
-      petId: selectedPetId,
-      petName: petName.trim(),
-      activity,
+      petId: selectedPet.id,
+      petName: selectedPet.nome,
+      activity: wellness,
       observations: trimmedObservations,
       date: new Date().toLocaleDateString('pt-BR'),
     });
 
-    setActivity(null);
+    setWellness(null);
     setObservations('');
 
-    Alert.alert('Sucesso', `Check-in de ${petName} salvo com sucesso!`);
+    Alert.alert(
+      'Registro salvo',
+      `O acompanhamento de ${selectedPet.nome} de hoje foi guardado. A clínica pode ver no resumo.`
+    );
   };
 
-  if (pets.length === 0) {
+  if (!tutorReady) {
     return (
       <ScreenLayout withHeader keyboard>
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Nenhum pet cadastrado</Text>
-          <Text style={styles.emptyText}>
-            Cadastre um pet em Meus Pets antes de fazer a triagem diária.
-          </Text>
-          <AppButton
-            title="Cadastrar pet"
-            onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
-          />
-        </View>
+        <FlowHintCard
+          title="Registro do dia indisponível"
+          message="Complete seu perfil em Meu Perfil antes de registrar como o pet está em casa."
+          buttonTitle="Ir para Meu Perfil"
+          onPress={() => navigation.navigate('Settings')}
+        />
       </ScreenLayout>
     );
   }
 
+  if (pets.length === 0) {
+    return (
+      <ScreenLayout withHeader keyboard>
+        <FlowHintCard
+          title="Nenhum pet cadastrado"
+          message="Cadastre o pet em Meus Pets para poder contar à clínica como ele está no dia a dia."
+          buttonTitle="Cadastrar pet"
+          onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
+        />
+      </ScreenLayout>
+    );
+  }
+
+  const needsPetSelection = pets.length > 1 && !selectedPet;
+
   return (
     <ScreenLayout withHeader keyboard>
-      <Text style={commonStyles.subtitle}>
-        Selecione o pet e registre a triagem de hoje.
-      </Text>
+      <View style={styles.introCard}>
+        <Text style={styles.introTitle}>Registro do dia para a clínica</Text>
+        <Text style={styles.introText}>
+          Em poucos passos, conte como o pet está em casa. Isso ajuda no acompanhamento entre
+          as consultas — você não precisa usar termos médicos.
+        </Text>
+      </View>
 
-      <Text style={styles.selectorTitle}>Pet do check-in</Text>
+      <Text style={styles.stepTitle}>1. Qual pet você está acompanhando hoje?</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.petSelector}>
         {pets.map((pet) => (
           <Pressable
@@ -131,26 +161,35 @@ export default function CheckinScreen() {
         ))}
       </ScrollView>
 
-      <View style={commonStyles.form}>
-        <View style={commonStyles.field}>
-          <Text style={commonStyles.label}>Nome do Pet</Text>
-          <TextInput
-            style={[commonStyles.input, styles.readOnlyInput]}
-            value={petName}
-            editable={false}
-            placeholderTextColor={colors.placeholder}
-          />
+      {needsPetSelection ? (
+        <Text style={styles.stepHint}>Toque no pet acima para continuar.</Text>
+      ) : null}
+
+      {selectedPet ? (
+        <View style={styles.selectedPetCard}>
+          <Ionicons name="paw" size={18} color={colors.accent} />
+          <View style={styles.selectedPetInfo}>
+            <Text style={styles.selectedPetName}>Registrando: {selectedPet.nome}</Text>
+            <Text style={styles.selectedPetBreed}>
+              {formatPetSpecies(selectedPet.especie, selectedPet.raca)}
+            </Text>
+          </View>
         </View>
+      ) : null}
 
-        <ActivitySelector value={activity} onChange={setActivity} />
+      <View style={commonStyles.form}>
+        <Text style={styles.stepTitle}>2. Como ele está se comportando?</Text>
 
+        <ActivitySelector value={wellness} onChange={setWellness} />
+
+        <Text style={styles.stepTitle}>3. Quer contar mais alguma coisa? (opcional)</Text>
         <View style={commonStyles.field}>
-          <Text style={commonStyles.label}>Observações</Text>
+          <Text style={commonStyles.label}>O que você notou hoje</Text>
           <TextInput
             style={[commonStyles.input, commonStyles.textArea]}
             value={observations}
             onChangeText={setObservations}
-            placeholder="Descreva qualquer detalhe relevante..."
+            placeholder="Ex: comeu menos, coçou muito, vomitou uma vez..."
             placeholderTextColor={colors.placeholder}
             multiline
             numberOfLines={4}
@@ -162,26 +201,32 @@ export default function CheckinScreen() {
           style={({ pressed }) => [
             commonStyles.primaryButton,
             pressed && commonStyles.primaryButtonPressed,
+            needsPetSelection && styles.buttonDisabled,
           ]}
           onPress={handleSave}
         >
-          <Text style={commonStyles.primaryButtonText}>Salvar Triagem</Text>
+          <Text style={commonStyles.primaryButtonText}>Salvar registro de hoje</Text>
         </Pressable>
       </View>
 
       <View style={commonStyles.summaryCard}>
-        <Text style={commonStyles.summaryTitle}>Resumo em tempo real</Text>
+        <Text style={commonStyles.summaryTitle}>Prévia do que será enviado</Text>
         <View style={commonStyles.summaryRow}>
-          <Text style={commonStyles.summaryLabel}>Nome do Pet</Text>
-          <Text style={commonStyles.summaryValue}>{petName.trim() || '—'}</Text>
+          <Text style={commonStyles.summaryLabel}>Pet</Text>
+          <Text style={commonStyles.summaryValue}>{selectedPet?.nome ?? '—'}</Text>
         </View>
         <View style={commonStyles.summaryRow}>
-          <Text style={commonStyles.summaryLabel}>Atividade</Text>
-          <Text style={commonStyles.summaryValue}>{activity ?? '—'}</Text>
+          <Text style={commonStyles.summaryLabel}>Comportamento</Text>
+          <Text style={commonStyles.summaryValue}>
+            {wellness ? getWellnessLabel(wellness) : '—'}
+          </Text>
         </View>
+        {wellness ? (
+          <Text style={styles.summaryHint}>{getWellnessHint(wellness)}</Text>
+        ) : null}
         <View style={commonStyles.summaryRow}>
-          <Text style={commonStyles.summaryLabel}>Observações</Text>
-          <Text style={commonStyles.summaryValue}>{observations.trim() || '—'}</Text>
+          <Text style={commonStyles.summaryLabel}>Detalhes extras</Text>
+          <Text style={commonStyles.summaryValue}>{observations.trim() || 'Nenhum'}</Text>
         </View>
       </View>
     </ScreenLayout>
@@ -189,31 +234,35 @@ export default function CheckinScreen() {
 }
 
 const styles = StyleSheet.create({
-  emptyCard: {
+  introCard: {
     ...commonStyles.card,
-    gap: 12,
+    marginBottom: 20,
+    gap: 8,
   },
-  emptyTitle: {
-    fontSize: 18,
+  introTitle: {
+    fontSize: 17,
     fontWeight: '700',
     color: colors.text,
   },
-  emptyText: {
+  introText: {
     fontSize: 14,
     color: colors.textMuted,
     lineHeight: 20,
-    marginBottom: 8,
   },
-  selectorTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textMuted,
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
     marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+  },
+  stepHint: {
+    fontSize: 13,
+    color: colors.accent,
+    marginBottom: 14,
+    marginTop: -6,
   },
   petSelector: {
-    marginBottom: 18,
+    marginBottom: 14,
     marginHorizontal: -20,
     paddingHorizontal: 20,
   },
@@ -258,7 +307,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
-  readOnlyInput: {
-    opacity: 0.85,
+  selectedPetCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.infoBg,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    marginBottom: 20,
+  },
+  selectedPetInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  selectedPetName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  selectedPetBreed: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  summaryHint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 16,
+    marginTop: -4,
+    marginBottom: 8,
+    paddingLeft: 2,
   },
 });

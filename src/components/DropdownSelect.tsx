@@ -3,16 +3,24 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, commonStyles } from '../theme';
 
+export type SelectOption<T extends string> = {
+  value: T;
+  label: string;
+  hint?: string;
+};
+
 type Props<T extends string> = {
   label: string;
+  helperText?: string;
   placeholder: string;
   value: T | null;
-  options: readonly T[];
+  options: readonly SelectOption<T>[];
   onChange: (value: T) => void;
 };
 
 export default function DropdownSelect<T extends string>({
   label,
+  helperText,
   placeholder,
   value,
   options,
@@ -20,14 +28,18 @@ export default function DropdownSelect<T extends string>({
 }: Props<T>) {
   const [open, setOpen] = useState(false);
 
-  const handleSelect = (option: T) => {
-    onChange(option);
+  const selectedOption = options.find((option) => option.value === value);
+  const triggerLabel = selectedOption?.label ?? placeholder;
+
+  const handleSelect = (option: SelectOption<T>) => {
+    onChange(option.value);
     setOpen(false);
   };
 
   return (
     <View style={[styles.field, open && styles.fieldOpen]}>
       <Text style={commonStyles.label}>{label}</Text>
+      {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
       <View style={styles.selectBox}>
         <Pressable
           style={({ pressed }) => [
@@ -37,9 +49,7 @@ export default function DropdownSelect<T extends string>({
           ]}
           onPress={() => setOpen((current) => !current)}
         >
-          <Text style={[styles.triggerText, !value && styles.placeholderText]}>
-            {value ?? placeholder}
-          </Text>
+          <Text style={[styles.triggerText, !value && styles.placeholderText]}>{triggerLabel}</Text>
           <Ionicons
             name={open ? 'chevron-up' : 'chevron-down'}
             size={20}
@@ -50,11 +60,11 @@ export default function DropdownSelect<T extends string>({
         {open ? (
           <View style={styles.menu}>
             {options.map((option, index) => {
-              const selected = value === option;
+              const selected = value === option.value;
               const isLast = index === options.length - 1;
               return (
                 <Pressable
-                  key={option}
+                  key={option.value}
                   style={({ pressed }) => [
                     styles.option,
                     !isLast && styles.optionBorder,
@@ -63,9 +73,12 @@ export default function DropdownSelect<T extends string>({
                   ]}
                   onPress={() => handleSelect(option)}
                 >
-                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                    {option}
-                  </Text>
+                  <View style={styles.optionContent}>
+                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                      {option.label}
+                    </Text>
+                    {option.hint ? <Text style={styles.optionHint}>{option.hint}</Text> : null}
+                  </View>
                   {selected ? (
                     <Ionicons name="checkmark" size={18} color={colors.accent} />
                   ) : null}
@@ -85,6 +98,13 @@ const styles = StyleSheet.create({
   },
   fieldOpen: {
     marginBottom: 20,
+  },
+  helperText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+    marginTop: -4,
+    marginBottom: 10,
   },
   selectBox: {
     width: '100%',
@@ -132,8 +152,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
-    paddingVertical: 14,
-    minHeight: 48,
+    paddingVertical: 12,
+    gap: 10,
   },
   optionBorder: {
     borderBottomWidth: 1,
@@ -145,13 +165,21 @@ const styles = StyleSheet.create({
   optionPressed: {
     backgroundColor: colors.surface,
   },
+  optionContent: {
+    flex: 1,
+    gap: 3,
+  },
   optionText: {
     fontSize: 15,
     color: colors.text,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   optionTextSelected: {
     color: colors.accent,
-    fontWeight: '600',
+  },
+  optionHint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 16,
   },
 });

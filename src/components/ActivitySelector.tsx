@@ -1,5 +1,5 @@
 import DropdownSelect from './DropdownSelect';
-import { ACTIVITY_LEVELS, type PetActivityLevel } from '../constants/activityLevels';
+import { WELLNESS_OPTIONS, type PetActivityLevel } from '../constants/activityLevels';
 
 type Props = {
   value: PetActivityLevel | null;
@@ -9,10 +9,11 @@ type Props = {
 export default function ActivitySelector({ value, onChange }: Props) {
   return (
     <DropdownSelect
-      label="Como está a atividade dele hoje?"
-      placeholder="Selecione uma opção"
+      label="Como está o comportamento dele em casa hoje?"
+      helperText="Conte o que você percebeu no dia a dia — não precisa ser termo técnico."
+      placeholder="Escolha a opção mais próxima"
       value={value}
-      options={ACTIVITY_LEVELS}
+      options={WELLNESS_OPTIONS}
       onChange={onChange}
     />
   );

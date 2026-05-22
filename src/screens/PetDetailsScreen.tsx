@@ -1,42 +1,27 @@
 import { useState, useCallback } from 'react';
-import { View, Text, Image, Alert, Platform, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/ScreenLayout';
-import VitalCard from '../components/VitalCard';
-import AppButton from '../components/AppButton';
 import { colors, commonStyles } from '../theme';
 import type { PetsStackParamList } from '../navigation/types';
 import type { Pet, CheckinRecord } from '../types/pet';
+import { getWellnessHint, getWellnessLabel } from '../constants/activityLevels';
 import { formatPetSpecies } from '../constants/petSpecies';
-import {
-  loadPets,
-  loadPetVitals,
-  loadLastCheckin,
-  savePetVitals,
-  setSelectedPetId,
-} from '../services/petData';
+import { loadPets, loadLastCheckin } from '../services/petData';
+import { formatPetWeight } from '../utils/petWeight';
 
 type Route = RouteProp<PetsStackParamList, 'PetDetails'>;
 
-function buildAboutText(pet: Pet, lastCheckin: CheckinRecord | null) {
+function buildAboutText(pet: Pet) {
   const especie = pet.especie?.toLowerCase() ?? 'pet';
   const parts = [
-    `${pet.nome} é um ${especie} da raça ${pet.raca}. Acompanhe a saúde e a recuperação com check-ins diários no app.`,
+    `${pet.nome} é um ${especie} da raça ${pet.raca}, acompanhado na clínica pelo tutor pelo app Clyvo Companion.`,
   ];
 
   if (pet.peso) {
-    parts.push(`Peso registrado: ${pet.peso}.`);
-  }
-
-  if (lastCheckin?.petId === pet.id) {
-    parts.push(
-      `Último check-in em ${lastCheckin.date}: atividade ${lastCheckin.activity.toLowerCase()}.`
-    );
-    if (lastCheckin.observations.trim()) {
-      parts.push(lastCheckin.observations.trim());
-    }
+    parts.push(`Peso registrado no cadastro: ${formatPetWeight(pet.peso)}.`);
   }
 
   return parts.join(' ');
@@ -45,22 +30,13 @@ function buildAboutText(pet: Pet, lastCheckin: CheckinRecord | null) {
 export default function PetDetailsScreen() {
   const { params } = useRoute<Route>();
   const [pet, setPet] = useState<Pet | null>(null);
-  const [ultimaVacina, setUltimaVacina] = useState('Não registrada');
   const [lastCheckin, setLastCheckin] = useState<CheckinRecord | null>(null);
 
   const loadDetails = useCallback(async () => {
     const pets = await loadPets();
     const found = pets.find((item) => item.id === params.petId) ?? null;
     setPet(found);
-
-    if (found) {
-      const [vitals, checkin] = await Promise.all([
-        loadPetVitals(found.id),
-        loadLastCheckin(),
-      ]);
-      setUltimaVacina(vitals.ultimaVacina);
-      setLastCheckin(checkin);
-    }
+    setLastCheckin(await loadLastCheckin());
   }, [params.petId]);
 
   useFocusEffect(
@@ -68,27 +44,6 @@ export default function PetDetailsScreen() {
       loadDetails();
     }, [loadDetails])
   );
-
-  const handleRegisterVaccine = async () => {
-    if (!pet) return;
-
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    await savePetVitals(pet.id, { ultimaVacina: hoje });
-    setUltimaVacina(hoje);
-
-    const message = 'Nova vacina registrada com sucesso!';
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert('Vacina', message);
-    }
-  };
-
-  const handleSetActive = async () => {
-    if (!pet) return;
-    await setSelectedPetId(pet.id);
-    Alert.alert('Pet ativo', `${pet.nome} é o pet usado no check-in e no perfil.`);
-  };
 
   if (!pet) {
     return (
@@ -101,58 +56,78 @@ export default function PetDetailsScreen() {
   }
 
   const initial = pet.nome.charAt(0).toUpperCase();
-  const pesoLabel = pet.peso?.trim() || 'Não informado';
+  const pesoLabel = formatPetWeight(pet.peso, 'Não informado');
   const breedLabel = formatPetSpecies(pet.especie, pet.raca);
+  const petCheckin = lastCheckin?.petId === pet.id ? lastCheckin : null;
 
   return (
-    <ScreenLayout
-      withTabBar
-      contentContainerStyle={styles.screenContent}
-    >
-        <View style={styles.heroWrap}>
-          {pet.fotoUri ? (
-            <Image source={{ uri: pet.fotoUri }} style={styles.heroImage} />
-          ) : (
-            <View style={styles.heroPlaceholder}>
-              <Text style={styles.heroPlaceholderText}>{initial}</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.detailsCard}>
-          <Text style={styles.petName}>{pet.nome}</Text>
-
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Ionicons name="scale-outline" size={18} color={colors.accent} />
-              <Text style={styles.metaText}>{pesoLabel}</Text>
-            </View>
-            <View style={styles.metaDivider} />
-            <View style={styles.metaItem}>
-              <Ionicons name="paw-outline" size={18} color={colors.accent} />
-              <Text style={styles.metaText}>{breedLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.aboutTitle}>Sobre o {pet.nome}</Text>
-          <Text style={styles.aboutText}>{buildAboutText(pet, lastCheckin)}</Text>
-
-          <Text style={styles.sectionTitle}>Dados de saúde</Text>
-          <View style={styles.vitalsGrid}>
-            <VitalCard label="Peso" value={pesoLabel} />
-            <VitalCard label="Última vacina" value={ultimaVacina} />
-          </View>
-
-          <AppButton title="Registrar nova vacina" onPress={handleRegisterVaccine} />
-          <AppButton
-            title="Usar como pet ativo"
-            onPress={handleSetActive}
-            variant="secondary"
-            style={styles.activeButton}
+    <ScreenLayout withTabBar contentContainerStyle={styles.screenContent}>
+      <View style={styles.heroWrap}>
+        {pet.fotoUri ? (
+          <Image
+            source={{ uri: pet.fotoUri }}
+            style={styles.heroImage}
+            resizeMode="cover"
           />
+        ) : (
+          <View style={styles.heroPlaceholder}>
+            <Text style={styles.heroPlaceholderText}>{initial}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.detailsCard}>
+        <Text style={styles.petName}>{pet.nome}</Text>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Ionicons name="scale-outline" size={18} color={colors.accent} />
+            <Text style={styles.metaText}>{pesoLabel}</Text>
+          </View>
+          <View style={styles.metaDivider} />
+          <View style={styles.metaItem}>
+            <Ionicons name="paw-outline" size={18} color={colors.accent} />
+            <Text style={styles.metaText}>{breedLabel}</Text>
+          </View>
         </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.aboutTitle}>Sobre o {pet.nome}</Text>
+        <Text style={styles.aboutText}>{buildAboutText(pet)}</Text>
+
+        <Text style={styles.sectionTitle}>Acompanhamento na clínica</Text>
+        {petCheckin ? (
+          <View style={styles.infoBox}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Comportamento</Text>
+              <Text style={styles.infoValue}>{getWellnessLabel(petCheckin.activity)}</Text>
+              <Text style={styles.infoHint}>{getWellnessHint(petCheckin.activity)}</Text>
+            </View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Data do registro</Text>
+              <Text style={styles.infoValue}>{petCheckin.date}</Text>
+            </View>
+            {petCheckin.observations.trim() ? (
+              <>
+                <View style={styles.infoDivider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>O que o tutor notou</Text>
+                  <Text style={styles.infoValue}>{petCheckin.observations.trim()}</Text>
+                </View>
+              </>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.infoBox}>
+            <Text style={styles.emptyFollowUp}>
+              Nenhum registro do dia para este pet ainda. Use a aba Registro do dia para contar
+              como ele está em casa.
+            </Text>
+          </View>
+        )}
+      </View>
     </ScreenLayout>
   );
 }
@@ -172,8 +147,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   heroWrap: {
-    height: 260,
+    width: '100%',
+    height: 280,
     backgroundColor: colors.surfaceElevated,
+    overflow: 'hidden',
   },
   heroImage: {
     width: '100%',
@@ -256,12 +233,42 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 12,
   },
-  vitalsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
+  infoBox: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  activeButton: {
-    marginTop: 10,
+  infoRow: {
+    gap: 6,
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 14,
+  },
+  infoHint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
+  emptyFollowUp: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    lineHeight: 22,
   },
 });

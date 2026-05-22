@@ -1,8 +1,10 @@
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { EventArg } from '@react-navigation/native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -11,9 +13,13 @@ import PetsNavigator from './src/navigation/PetsNavigator';
 import CheckinScreen from './src/screens/CheckinScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import AuthScreen from './src/screens/AuthScreen';
 import AppLogo from './src/components/AppLogo';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import type { RootTabParamList } from './src/navigation/types';
 import { colors } from './src/theme';
+import { hasTutorProfile, loadTutorProfile } from './src/services/tutorData';
+import { loadPets } from './src/services/petData';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -31,6 +37,35 @@ const headerLogoOptions = {
   headerTitle: () => <AppLogo width={170} height={44} />,
   headerTitleAlign: 'center' as const,
 };
+
+type TabPressEvent = EventArg<'tabPress', true>;
+
+async function guardTutorProfile(event: TabPressEvent, navigate: (name: 'Settings') => void) {
+  const tutor = await loadTutorProfile();
+  if (!hasTutorProfile(tutor)) {
+    event.preventDefault();
+    navigate('Settings');
+  }
+}
+
+async function guardTutorAndPet(
+  event: TabPressEvent,
+  navigateSettings: () => void,
+  navigatePets: () => void
+) {
+  const tutor = await loadTutorProfile();
+  if (!hasTutorProfile(tutor)) {
+    event.preventDefault();
+    navigateSettings();
+    return;
+  }
+
+  const pets = await loadPets();
+  if (pets.length === 0) {
+    event.preventDefault();
+    navigatePets();
+  }
+}
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
@@ -72,6 +107,11 @@ function MainTabs() {
       <Tab.Screen
         name="Pets"
         component={PetsNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            guardTutorProfile(event, () => navigation.navigate('Settings'));
+          },
+        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
@@ -84,10 +124,19 @@ function MainTabs() {
       <Tab.Screen
         name="Checkin"
         component={CheckinScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            guardTutorAndPet(
+              event,
+              () => navigation.navigate('Settings'),
+              () => navigation.navigate('Pets', { screen: 'PetsList' })
+            );
+          },
+        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
-          title: 'Check-in',
+          title: 'Registro do dia',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="clipboard-outline" size={size} color={color} />
           ),
@@ -96,12 +145,21 @@ function MainTabs() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            guardTutorAndPet(
+              event,
+              () => navigation.navigate('Settings'),
+              () => navigation.navigate('Pets', { screen: 'PetsList' })
+            );
+          },
+        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
-          title: 'Perfil',
+          title: 'Prontuário',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="document-text-outline" size={size} color={color} />
           ),
         }}
       />
@@ -111,9 +169,9 @@ function MainTabs() {
         options={{
           ...headerOptions,
           ...headerLogoOptions,
-          title: 'Configurações',
+          title: 'Meu Perfil',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="person-circle-outline" size={size} color={color} />
           ),
         }}
       />
@@ -121,15 +179,42 @@ function MainTabs() {
   );
 }
 
+function AppNavigator() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      {session ? <MainTabs /> : <AuthScreen />}
+    </NavigationContainer>
+  );
+}
+
 function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <NavigationContainer>
-        <MainTabs />
-      </NavigationContainer>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  boot: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 registerRootComponent(App);

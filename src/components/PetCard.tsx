@@ -1,6 +1,7 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import { formatPetWeight } from '../utils/petWeight';
 import type { PetSpecies } from '../constants/petSpecies';
 
 type Props = {
@@ -9,21 +10,16 @@ type Props = {
   raca: string;
   peso?: string;
   fotoUri?: string;
-  selected?: boolean;
   onPress?: () => void;
 };
 
-export default function PetCard({ nome, peso, fotoUri, selected, onPress }: Props) {
+export default function PetCard({ nome, peso, fotoUri, onPress }: Props) {
   const initial = nome.charAt(0).toUpperCase();
-  const subtitle = peso?.trim() || 'Peso não informado';
+  const subtitle = formatPetWeight(peso);
 
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        selected && styles.cardSelected,
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
       {fotoUri ? (
@@ -37,7 +33,6 @@ export default function PetCard({ nome, peso, fotoUri, selected, onPress }: Prop
       <View style={styles.info}>
         <Text style={styles.name}>{nome}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
-        {selected ? <Text style={styles.selectedTag}>Pet ativo no app</Text> : null}
       </View>
 
       <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
@@ -55,10 +50,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: 12,
-  },
-  cardSelected: {
-    borderColor: colors.accent,
-    borderWidth: 2,
   },
   cardPressed: {
     opacity: 0.92,
@@ -98,11 +89,5 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
-  },
-  selectedTag: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.accent,
-    marginTop: 2,
   },
 });

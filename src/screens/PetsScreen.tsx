@@ -16,6 +16,7 @@ import {
   ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, commonStyles } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import PetCard from '../components/PetCard';
@@ -23,17 +24,20 @@ import SpeciesSelector from '../components/SpeciesSelector';
 import type { PetSpecies } from '../constants/petSpecies';
 import type { PetsStackParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
+import { normalizePetWeight } from '../utils/petWeight';
 import {
   loadPets as fetchPets,
   savePets as persistPets,
-  setSelectedPetId,
-  getActivePet,
-  savePetVitals,
 } from '../services/petData';
+import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
+import FlowHintCard from '../components/FlowHintCard';
+
 type PetsListNav = NativeStackNavigationProp<PetsStackParamList, 'PetsList'>;
 
 export default function PetsScreen() {
   const navigation = useNavigation<PetsListNav>();
+  const tabNavigation = navigation.getParent();
+  const [tutorReady, setTutorReady] = useState(false);
   const [pets, setPets] = useState<Pet[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [nome, setNome] = useState('');
@@ -41,18 +45,37 @@ export default function PetsScreen() {
   const [raca, setRaca] = useState('');
   const [peso, setPeso] = useState('');
   const [fotoUri, setFotoUri] = useState('');
-  const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
-
   const loadPets = useCallback(async () => {
     try {
+      const tutor = await loadTutorProfile();
+      setTutorReady(hasTutorProfile(tutor));
+
       const petsList = await fetchPets();
       setPets(petsList);
-      const active = await getActivePet(petsList);
-      setSelectedPetIdState(active?.id ?? null);
     } catch {
       Alert.alert('Erro', 'Não foi possível carregar os pets salvos.');
     }
   }, []);
+
+  const goToTutorProfile = () => {
+    tabNavigation?.navigate('Settings');
+  };
+
+  const handleOpenRegister = async () => {
+    const tutor = await loadTutorProfile();
+    if (!hasTutorProfile(tutor)) {
+      Alert.alert(
+        'Perfil do tutor necessário',
+        'Complete seu perfil em Meu Perfil (nome obrigatório) antes de cadastrar um pet.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Criar perfil', onPress: goToTutorProfile },
+        ]
+      );
+      return;
+    }
+    setModalVisible(true);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -112,16 +135,13 @@ export default function PetsScreen() {
       nome: trimmedNome,
       especie,
       raca: trimmedRaca,
-      peso: trimmedPeso,
+      peso: normalizePetWeight(trimmedPeso),
       ...(fotoUri ? { fotoUri } : {}),
     };
 
     try {
       const updatedPets = [...pets, newPet];
       await savePets(updatedPets);
-      await savePetVitals(newPet.id, { ultimaVacina: 'Não registrada' });
-      await setSelectedPetId(newPet.id);
-      setSelectedPetIdState(newPet.id);
       closeModal();
       Alert.alert('Sucesso', 'Pet cadastrado com sucesso!');
     } catch {
@@ -129,17 +149,30 @@ export default function PetsScreen() {
     }
   };
 
+  if (!tutorReady) {
+    return (
+      <ScreenLayout withHeader>
+        <FlowHintCard
+          title="Cadastro de pets bloqueado"
+          message="Complete seu perfil em Meu Perfil (nome obrigatório, foto opcional) para cadastrar seu primeiro pet."
+          buttonTitle="Ir para Meu Perfil"
+          onPress={goToTutorProfile}
+        />
+      </ScreenLayout>
+    );
+  }
+
   return (
     <ScreenLayout withHeader scrollable={false}>
       <Pressable
         style={({ pressed }) => [styles.registerButton, pressed && styles.registerButtonPressed]}
-        onPress={() => setModalVisible(true)}
+        onPress={handleOpenRegister}
       >
-        <Text style={styles.registerButtonText}>Cadastrar Novo Pet</Text>
+        <Text style={styles.registerButtonText}>Cadastrar pet na clínica</Text>
       </Pressable>
 
       <Text style={[commonStyles.subtitle, styles.hint]}>
-        Toque no pet para ver os detalhes. O pet ativo é definido na tela de detalhes.
+        Toque no pet para ver o prontuário na clínica.
       </Text>
       <Text style={[commonStyles.subtitle, styles.count]}>
         {pets.length} pet{pets.length !== 1 ? 's' : ''} cadastrado{pets.length !== 1 ? 's' : ''}
@@ -159,7 +192,6 @@ export default function PetsScreen() {
             raca={item.raca}
             peso={item.peso}
             fotoUri={item.fotoUri}
-            selected={item.id === selectedPetId}
             onPress={() => navigation.navigate('PetDetails', { petId: item.id })}
           />
         )}
@@ -175,12 +207,23 @@ export default function PetsScreen() {
 
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={closeModal} accessibilityLabel="Fechar" />
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalKeyboard}
           >
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Cadastrar Novo Pet</Text>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Cadastrar Novo Pet</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}
+                  onPress={closeModal}
+                  hitSlop={12}
+                  accessibilityLabel="Fechar"
+                >
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </Pressable>
+              </View>
 
               <ScrollView
                 showsVerticalScrollIndicator
@@ -213,12 +256,13 @@ export default function PetsScreen() {
               </View>
 
               <View style={commonStyles.field}>
-                <Text style={commonStyles.label}>Peso</Text>
+                <Text style={commonStyles.label}>Peso (kg)</Text>
                 <TextInput
                   style={commonStyles.input}
                   value={peso}
                   onChangeText={setPeso}
-                  placeholder="Ex: 12 kg"
+                  placeholder="Ex: 12"
+                  keyboardType="decimal-pad"
                   placeholderTextColor={colors.placeholder}
                   keyboardType="default"
                 />
@@ -244,12 +288,6 @@ export default function PetsScreen() {
                 <Text style={commonStyles.primaryButtonText}>Salvar</Text>
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [styles.cancelButton, pressed && styles.cancelButtonPressed]}
-                onPress={closeModal}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </Pressable>
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -307,8 +345,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   modalKeyboard: {
     width: '100%',
@@ -323,14 +364,35 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     maxHeight: '90%',
   },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
   modalScrollContent: {
     paddingBottom: 24,
   },
   modalTitle: {
+    flex: 1,
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 20,
+    paddingRight: 12,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  closeButtonPressed: {
+    opacity: 0.8,
+    backgroundColor: colors.infoBg,
   },
   pickPhotoButton: {
     backgroundColor: colors.surfaceElevated,
@@ -359,18 +421,6 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   saveButton: {
-    marginBottom: 10,
-  },
-  cancelButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  cancelButtonPressed: {
-    opacity: 0.8,
-  },
-  cancelButtonText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    fontWeight: '600',
+    marginTop: 4,
   },
 });
