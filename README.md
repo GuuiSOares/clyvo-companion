@@ -8,13 +8,12 @@ Projeto da disciplina **Mobile Application Development** — Entrega do **1º Sp
 
 ---
 
-## Demonstração em vídeo
+## Links da entrega
 
-Link do vídeo narrado (YouTube, modo não listado):
-
-```
-[LINK DO YOUTUBE]
-```
+| Item | Link |
+|------|------|
+| Repositório (GitHub Classroom) | https://github.com/2TDSPX/challenge12-clyvo-companion |
+| Vídeo demonstrativo (YouTube, não listado) | https://youtu.be/viu-uQ8KbfI |
 
 ---
 
@@ -58,7 +57,7 @@ Fluxo progressivo: enquanto o perfil não estiver completo, cadastro de pets, re
 ### Instalação
 
 ```bash
-git clone <url-do-repositorio-classroom>
+git clone https://github.com/2TDSPX/challenge12-clyvo-companion.git
 cd challenge12-clyvo-companion
 npm install
 ```
