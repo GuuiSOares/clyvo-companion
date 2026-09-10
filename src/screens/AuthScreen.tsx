@@ -97,8 +97,8 @@ export default function AuthScreen() {
         </Text>
         <Text style={styles.subtitle}>
           {isRegister
-            ? 'Cadastro depende da API. Se não estiver liberado, entre com a conta de teste do tutor.'
-            : 'Login na API da Clyvo. A primeira vez pode demorar enquanto o servidor acorda.'}
+            ? 'Crie sua conta de tutor para acompanhar seus pets na clínica.'
+            : 'Entre com seu e-mail e senha. Na primeira vez, a entrada pode demorar um pouco.'}
         </Text>
       </View>
 
@@ -186,11 +186,11 @@ export default function AuthScreen() {
       </View>
 
       <View style={styles.stepsCard}>
-        <Text style={styles.stepsTitle}>Conta de teste (tutor)</Text>
+        <Text style={styles.stepsTitle}>Conta de demonstração</Text>
         <Text style={styles.stepsItem}>E-mail: maria@email.com</Text>
         <Text style={styles.stepsItem}>Senha: senha123</Text>
         <Text style={styles.stepsItem}>
-          A primeira entrada pode levar cerca de 50s se a API estiver dormindo.
+          Na primeira entrada, pode levar cerca de um minuto. É só esperar na tela.
         </Text>
       </View>
     </ScreenLayout>

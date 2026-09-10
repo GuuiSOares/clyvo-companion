@@ -18,7 +18,6 @@ import AppButton from '../components/AppButton';
 import { colors, commonStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { hasTutorProfile, loadTutorProfile, saveTutorProfile } from '../services/tutorData';
-import { clearAllAppData } from '../services/petData';
 
 type Props = BottomTabScreenProps<RootTabParamList, 'Settings'>;
 
@@ -34,17 +33,18 @@ export default function SettingsScreen() {
       setNome(profile.nome);
       setFotoUri(profile.fotoUri ?? '');
       setProfileComplete(hasTutorProfile(profile));
-    } else {
-      setNome('');
-      setFotoUri('');
-      setProfileComplete(false);
+      return;
     }
-  }, []);
+
+    setNome(session?.nomeUsuario ?? '');
+    setFotoUri('');
+    setProfileComplete(!!session?.nomeUsuario);
+  }, [session?.email, session?.nomeUsuario]);
 
   useFocusEffect(
     useCallback(() => {
       loadProfile();
-    }, [loadProfile, session?.email])
+    }, [loadProfile])
   );
 
   const showAlert = (title: string, message: string) => {
@@ -89,10 +89,7 @@ export default function SettingsScreen() {
         ...(fotoUri ? { fotoUri } : {}),
       });
       setProfileComplete(true);
-      showAlert(
-        'Perfil criado',
-        'Agora você pode cadastrar seus pets e acompanhar a saúde deles na clínica.'
-      );
+      showAlert('Perfil salvo', 'Nome e foto atualizados neste aparelho.');
     } catch {
       showAlert('Erro', 'Não foi possível salvar o perfil do tutor.');
     }
@@ -106,25 +103,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleClearLocalData = async () => {
-    try {
-      await clearAllAppData();
-      await signOut();
-      setNome('');
-      setFotoUri('');
-      setProfileComplete(false);
-      showAlert('Sucesso', 'Todos os dados do app foram apagados. Faça login novamente.');
-    } catch {
-      showAlert('Erro', 'Não foi possível apagar os dados locais.');
-    }
-  };
-
   const initial = nome.trim().charAt(0).toUpperCase() || 'T';
 
   return (
     <ScreenLayout withHeader keyboard>
       <Text style={commonStyles.subtitle}>
-        Complete seu perfil de tutor para liberar cadastro de pets, registro do dia e prontuário.
+        Nome e foto aparecem só neste aparelho. Pets e registros do dia ficam no prontuário da clínica.
       </Text>
 
       {session?.email ? (
@@ -136,16 +120,16 @@ export default function SettingsScreen() {
 
       {profileComplete ? (
         <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Tutor cadastrado na clínica</Text>
+          <Text style={styles.statusTitle}>Perfil do tutor</Text>
           <Text style={styles.statusText}>
-            Perfil ativo. Você já pode cadastrar pets e registrar check-ins diários.
+            Seu nome e foto neste aparelho. O prontuário dos pets fica na clínica.
           </Text>
         </View>
       ) : (
         <View style={styles.statusCardPending}>
-          <Text style={styles.statusTitlePending}>Perfil pendente</Text>
+          <Text style={styles.statusTitlePending}>Complete seu perfil</Text>
           <Text style={styles.statusText}>
-            Informe seu nome para liberar Meus Pets, Registro do dia e Prontuário. A foto é opcional.
+            Informe seu nome. A foto é opcional e só aparece para você neste aparelho.
           </Text>
         </View>
       )}
@@ -187,7 +171,7 @@ export default function SettingsScreen() {
           onPress={handleSaveProfile}
         >
           <Text style={commonStyles.primaryButtonText}>
-            {profileComplete ? 'Atualizar perfil do tutor' : 'Criar perfil do tutor'}
+            {profileComplete ? 'Atualizar nome e foto' : 'Salvar nome e foto'}
           </Text>
         </Pressable>
       </View>
@@ -197,13 +181,6 @@ export default function SettingsScreen() {
         onPress={handleSignOut}
         variant="secondary"
         style={styles.signOutButton}
-      />
-
-      <AppButton
-        title="Limpar todos os dados"
-        onPress={handleClearLocalData}
-        variant="danger"
-        style={styles.clearButton}
       />
     </ScreenLayout>
   );
@@ -301,9 +278,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   signOutButton: {
-    marginTop: 8,
-  },
-  clearButton: {
     marginTop: 8,
   },
 });

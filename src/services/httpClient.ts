@@ -40,7 +40,7 @@ function readErrorMessage(data: unknown, status: number) {
   if (status === 401) return 'E-mail ou senha incorretos.';
   if (status === 403) return 'Você não tem permissão para esta ação.';
   if (status === 404) return 'Registro não encontrado.';
-  return `Erro ${status} na API.`;
+  return 'Não foi possível concluir. Tente de novo.';
 }
 
 type RequestOptions = {
@@ -83,11 +83,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new ApiError(
-        'A API demorou para responder. Se for a primeira vez, aguarde e tente de novo.',
+        'O servidor demorou para responder. Se for a primeira vez, aguarde e tente de novo.',
         0
       );
     }
-    throw new ApiError('Não foi possível conectar à API. Verifique a internet.', 0);
+    throw new ApiError('Não foi possível conectar. Verifique a internet e tente de novo.', 0);
   } finally {
     clearTimeout(timeout);
   }

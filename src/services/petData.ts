@@ -1,11 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  TUTOR_NAME_KEY,
-  TUTOR_PROFILE_KEY,
-  PETS_STORAGE_KEY,
-  LAST_CHECKIN_KEY,
-} from '../constants/storage';
-import { clearAuthData, loadAuthSession } from './authData';
+import { LAST_CHECKIN_KEY } from '../constants/storage';
+import { loadAuthSession } from './authData';
 import { listPets } from './petApi';
 import type { Pet, CheckinRecord } from '../types/pet';
 
@@ -32,14 +27,4 @@ export async function loadLastCheckin(): Promise<CheckinRecord | null> {
 
 export async function saveLastCheckin(checkin: CheckinRecord): Promise<void> {
   await AsyncStorage.setItem(LAST_CHECKIN_KEY, JSON.stringify(checkin));
-}
-
-export async function clearAllAppData(): Promise<void> {
-  await clearAuthData();
-  await AsyncStorage.multiRemove([
-    TUTOR_NAME_KEY,
-    TUTOR_PROFILE_KEY,
-    PETS_STORAGE_KEY,
-    LAST_CHECKIN_KEY,
-  ]);
 }
