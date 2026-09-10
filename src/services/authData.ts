@@ -3,7 +3,7 @@ import { API_CREDENTIALS_KEY, AUTH_ACCOUNTS_KEY, AUTH_SESSION_KEY } from '../con
 import type { AuthSession } from '../types/auth';
 import type { ApiCredentials } from './httpClient';
 import { ApiError, setApiCredentials } from './httpClient';
-import { fetchCurrentUser, loginWithApi, logoutFromApi, registerTutor } from './authApi';
+import { loginWithApi, logoutFromApi, registerTutor } from './authApi';
 import { isValidEmail, isValidPassword, normalizeEmail } from '../utils/validation';
 
 async function persistSession(session: AuthSession, senha: string): Promise<void> {
@@ -43,30 +43,15 @@ export async function loadApiCredentials(): Promise<ApiCredentials | null> {
 }
 
 export async function restoreApiSession(): Promise<AuthSession | null> {
-  const credentials = await loadApiCredentials();
-  if (!credentials) {
+  const [credentials, session] = await Promise.all([loadApiCredentials(), loadAuthSession()]);
+
+  if (!credentials || !session) {
     await clearAuthData();
     return null;
   }
 
   setApiCredentials(credentials);
-
-  try {
-    const user = await fetchCurrentUser();
-    if (user.tpPerfil !== 'TUTOR') {
-      await clearAuthData();
-      setApiCredentials(null);
-      return null;
-    }
-
-    const session = toSession(user);
-    await persistSession(session, credentials.senha);
-    return session;
-  } catch {
-    await clearAuthData();
-    setApiCredentials(null);
-    return null;
-  }
+  return session;
 }
 
 export async function registerAccount(
