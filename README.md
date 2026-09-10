@@ -1,8 +1,8 @@
 # Clyvo Companion
 
-Aplicativo mobile desenvolvido em **React Native com Expo**, voltado ao **tutor** na clínica veterinária. O Clyvo Companion permite criar conta, completar o perfil, cadastrar pets, registrar como o animal está em casa e consultar o prontuário com dados salvos localmente no aparelho.
+Aplicativo mobile em **React Native com Expo**, voltado ao **tutor** na clínica veterinária. O Clyvo Companion autentica na API Java, cadastra pets, registra como o animal está em casa e consulta o prontuário com dados persistidos no servidor.
 
-Projeto da disciplina **Mobile Application Development** — Entrega do **1º Sprint**.
+Projeto da disciplina **Mobile Application Development** — Entrega do **3º Sprint**.
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/GDVnG_N-)
 
@@ -13,7 +13,27 @@ Projeto da disciplina **Mobile Application Development** — Entrega do **1º Sp
 | Item | Link |
 |------|------|
 | Repositório (GitHub Classroom) | https://github.com/2TDSPX/challenge12-clyvo-companion |
+| API Java (Render) | https://challenge-clyvo-companion.onrender.com |
+| Swagger | https://challenge-clyvo-companion.onrender.com/swagger-ui.html |
 | Vídeo demonstrativo (YouTube, não listado) | https://youtu.be/viu-uQ8KbfI |
+
+> Substitua o link do vídeo pelo da Sprint 3 quando gravar (até 5 minutos).
+
+---
+
+## Conta de teste (tutor)
+
+A API ainda não libera cadastro público (`POST /usuarios` exige autenticação). Use a conta seed:
+
+| Campo | Valor |
+|-------|--------|
+| E-mail | `maria@email.com` |
+| Senha | `senha123` |
+| Perfil | `TUTOR` (`idUsuario: 1`) |
+
+Pets seed da Maria: **Thor** (cachorro) e **Luna** (gato).
+
+A primeira chamada pode levar cerca de **50 segundos** se o Render estiver dormindo. Se um pet criado no app sumir no dia seguinte, o seed da API provavelmente recriou o banco no restart.
 
 ---
 
@@ -21,15 +41,12 @@ Projeto da disciplina **Mobile Application Development** — Entrega do **1º Sp
 
 O tutor usa o app para:
 
-1. **Entrar** com e-mail e senha (primeira vez: criar conta).
-2. **Completar o perfil** em Meu Perfil (nome obrigatório, foto opcional).
-3. **Cadastrar pets** (nome, espécie, raça, peso, foto opcional).
-4. **Registrar o dia** como o pet está se comportando em casa, com prévia em tempo real.
-5. **Consultar o prontuário** lista de pets e detalhes com histórico de acompanhamento.
+1. **Entrar** com e-mail e senha na API (`POST /auth/login`).
+2. **Cadastrar, editar e excluir pets** (`/pets`).
+3. **Registrar o dia** (peso, alimentação, exercício, temperatura ou frequência cardíaca) em `/logs-saude`, com edição e exclusão.
+4. **Consultar o prontuário** com o histórico que veio da API.
 
-Fluxo progressivo: enquanto o perfil não estiver completo, cadastro de pets, registro e prontuário permanecem bloqueados com orientações na tela.
-
-> **Conta no aparelho:** uma conta por dispositivo. Para testar outro tutor do zero, use **Limpar todos os dados** em Meu Perfil.
+Nome e foto em **Meu Perfil** ficam só no aparelho. Login, pets e registros do dia passam pela API.
 
 ---
 
@@ -40,13 +57,15 @@ Fluxo progressivo: enquanto o perfil não estiver completo, cadastro de pets, re
 | [Expo](https://expo.dev) (~54) | Toolchain e execução do app |
 | [React Native](https://reactnative.dev) | Interface mobile |
 | [React Navigation](https://reactnavigation.org) | Tabs + stack (7 rotas) |
-| [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) | Persistência local |
-| [expo-image-picker](https://docs.expo.dev/versions/latest/sdk/imagepicker/) | Foto do tutor e dos pets |
+| [TanStack Query](https://tanstack.com/query) (5.67.2) | Cache e mutações HTTP |
+| [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) | Sessão local (e-mail/senha para Basic Auth) |
 | TypeScript | Tipagem do código |
 
 ---
 
 ## Como executar
+
+Nada precisa ser configurado além do Node e do Expo. A URL da API já está no código (`src/constants/api.ts`).
 
 ### Pré-requisitos
 
@@ -83,62 +102,61 @@ npm run lint      # ESLint
 
 ---
 
+## Arquitetura
+
+| Camada | Pasta | Papel |
+|--------|-------|--------|
+| Telas | `src/screens/` | UI e formulários |
+| Hooks | `src/hooks/` | TanStack Query (pets e logs) |
+| Serviços | `src/services/` | Cliente HTTP, auth, pets, logs |
+| Navegação | `src/navigation/` | Tabs + stack de pets |
+| Tipos | `src/types/` | Contratos da API e do app |
+
+Fluxo HTTP: tela → hook (`usePets` / `useHealthLogs`) → serviço (`petApi` / `logSaudeApi`) → `httpClient` com **HTTP Basic** (`email:senha`).
+
+---
+
 ## Navegação (rotas)
 
 O app utiliza **React Navigation** com **5 abas** e **stack** em Meus Pets — **7 telas navegáveis** no total:
 
 | Rota | Tela | Descrição |
 |------|------|-----------|
-| Login | `AuthScreen` | Entrar ou criar conta (e-mail e senha) |
-| Início | `HomeScreen` | Painel do tutor e resumo na clínica |
-| Meus Pets | `PetsList` | Lista e cadastro de pets |
-| Detalhes do Pet | `PetDetails` | Foto, peso, sobre e acompanhamento |
-| Registro do dia | `CheckinScreen` | Formulário diário com prévia em tempo real |
-| Prontuário | `ProfileScreen` | Lista de pets para ver detalhes |
-| Meu Perfil | `SettingsScreen` | Perfil do tutor, sair da conta, limpar dados |
+| Login | `AuthScreen` | Login na API (conta de teste visível na tela) |
+| Início | `HomeScreen` | Painel do tutor e último registro da API |
+| Meus Pets | `PetsList` | CRUD de pets na API |
+| Detalhes do Pet | `PetDetails` | Dados do pet e histórico de `/logs-saude` |
+| Registro do dia | `CheckinScreen` | CRUD de acompanhamento na API |
+| Prontuário | `ProfileScreen` | Lista de pets da API |
+| Meu Perfil | `SettingsScreen` | Nome/foto locais, sair da conta |
 
 ---
 
-## Formulários e `useState`
+## Autenticação e CRUDs
 
-Há formulários com campos controlados por **`useState`** em várias telas.
+- **Auth real:** `POST /auth/login` na API Java. O app não aceita login só local.
+- **CRUD 1 — Pets:** `GET/POST/PUT/DELETE /pets`
+- **CRUD 2 — Logs de saúde:** `GET/POST/PUT/DELETE /logs-saude`
 
-- Seleção de pet, comportamento (dropdown) e observações.
-- Card **“Prévia do que será enviado”** atualiza **enquanto o usuário preenche**.
-- Botão **Salvar** grava no AsyncStorage e limpa os campos.
-
-Outros formulários: cadastro de pet (modal), perfil do tutor, login/cadastro.
-
----
-
-## Armazenamento local (AsyncStorage)
-
-Dados persistidos e **restaurados ao reabrir o app**:
-
-| Dado | Serviço / chave |
-|------|------------------|
-| Conta (e-mail/senha) | `src/services/authData.ts` |
-| Sessão logada | `@clyvo/authSession` |
-| Perfil do tutor | `src/services/tutorData.ts` → `@clyvo/tutorProfile` |
-| Lista de pets | `src/services/petData.ts` → `@clyvo/pets` |
-| Último registro do dia | `@clyvo/lastCheckin` |
+A sessão fica no aparelho para reabrir o app sem esperar a API acordar. **Sair da conta** limpa a sessão local na hora (não espera `POST /auth/logout`).
 
 ---
 
 ## Estrutura do projeto
 
 ```
-├── App.tsx                 # Navegação principal e auth gate
+├── App.tsx                 # Auth gate + tabs + QueryClient
 ├── src/
 │   ├── screens/            # Telas do app
-│   ├── components/         # UI reutilizável (cards, dropdown, layout)
+│   ├── components/         # UI reutilizável
 │   ├── navigation/         # PetsNavigator (stack)
-│   ├── services/           # AsyncStorage (auth, tutor, pets)
+│   ├── services/           # HTTP, auth, pets, logs
+│   ├── hooks/              # TanStack Query
 │   ├── context/            # AuthContext
-│   ├── constants/          # Espécies, comportamento, chaves storage
+│   ├── constants/          # URL da API, espécies, storage
 │   ├── types/              # Tipos TypeScript
 │   ├── theme/              # Cores e estilos comuns
-│   └── utils/              # Validação, formatação de peso
+│   └── utils/              # Validação e mapeamento de logs
 └── assets/                 # Logo e ícones
 ```
 
