@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import type { EventArg } from '@react-navigation/native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -20,8 +19,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/lib/queryClient';
 import type { RootTabParamList } from './src/navigation/types';
 import { colors } from './src/theme';
-import { hasTutorProfile, loadTutorProfile } from './src/services/tutorData';
-import { loadPets } from './src/services/petData';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -39,35 +36,6 @@ const headerLogoOptions = {
   headerTitle: () => <AppLogo width={170} height={44} />,
   headerTitleAlign: 'center' as const,
 };
-
-type TabPressEvent = EventArg<'tabPress', true>;
-
-async function guardTutorProfile(event: TabPressEvent, navigate: (name: 'Settings') => void) {
-  const tutor = await loadTutorProfile();
-  if (!hasTutorProfile(tutor)) {
-    event.preventDefault();
-    navigate('Settings');
-  }
-}
-
-async function guardTutorAndPet(
-  event: TabPressEvent,
-  navigateSettings: () => void,
-  navigatePets: () => void
-) {
-  const tutor = await loadTutorProfile();
-  if (!hasTutorProfile(tutor)) {
-    event.preventDefault();
-    navigateSettings();
-    return;
-  }
-
-  const pets = await loadPets();
-  if (pets.length === 0) {
-    event.preventDefault();
-    navigatePets();
-  }
-}
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
@@ -109,11 +77,6 @@ function MainTabs() {
       <Tab.Screen
         name="Pets"
         component={PetsNavigator}
-        listeners={({ navigation }) => ({
-          tabPress: (event) => {
-            guardTutorProfile(event, () => navigation.navigate('Settings'));
-          },
-        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
@@ -126,15 +89,6 @@ function MainTabs() {
       <Tab.Screen
         name="Checkin"
         component={CheckinScreen}
-        listeners={({ navigation }) => ({
-          tabPress: (event) => {
-            guardTutorAndPet(
-              event,
-              () => navigation.navigate('Settings'),
-              () => navigation.navigate('Pets', { screen: 'PetsList' })
-            );
-          },
-        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,
@@ -147,15 +101,6 @@ function MainTabs() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        listeners={({ navigation }) => ({
-          tabPress: (event) => {
-            guardTutorAndPet(
-              event,
-              () => navigation.navigate('Settings'),
-              () => navigation.navigate('Pets', { screen: 'PetsList' })
-            );
-          },
-        })}
         options={{
           ...headerOptions,
           ...headerLogoOptions,

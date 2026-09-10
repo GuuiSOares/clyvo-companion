@@ -23,7 +23,6 @@ import SpeciesSelector from '../components/SpeciesSelector';
 import type { PetSpecies } from '../constants/petSpecies';
 import type { PetsStackParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
-import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
 import FlowHintCard from '../components/FlowHintCard';
 import { usePetMutations, usePetsQuery } from '../hooks/usePets';
 import { isValidBirthDate } from '../utils/petBirthDate';
@@ -33,7 +32,6 @@ type PetsListNav = NativeStackNavigationProp<PetsStackParamList, 'PetsList'>;
 
 export default function PetsScreen() {
   const navigation = useNavigation<PetsListNav>();
-  const tabNavigation = navigation.getParent();
   const petsQuery = usePetsQuery();
   const { create, update } = usePetMutations();
   const [modalVisible, setModalVisible] = useState(false);
@@ -43,11 +41,6 @@ export default function PetsScreen() {
   const [dtNascimento, setDtNascimento] = useState('');
 
   const pets = petsQuery.data ?? [];
-  const tutorReady = true;
-
-  const goToTutorProfile = () => {
-    tabNavigation?.navigate('Settings');
-  };
 
   const resetForm = () => {
     setEditingPet(null);
@@ -61,19 +54,7 @@ export default function PetsScreen() {
     resetForm();
   };
 
-  const openCreate = async () => {
-    const tutor = await loadTutorProfile();
-    if (!hasTutorProfile(tutor)) {
-      Alert.alert(
-        'Perfil do tutor necessário',
-        'Complete seu perfil em Meu Perfil antes de cadastrar um pet.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Criar perfil', onPress: goToTutorProfile },
-        ]
-      );
-      return;
-    }
+  const openCreate = () => {
     resetForm();
     setModalVisible(true);
   };
@@ -109,7 +90,7 @@ export default function PetsScreen() {
           dtNascimento: trimmedDate,
         });
         closeModal();
-        Alert.alert('Sucesso', 'Pet atualizado na API.');
+        Alert.alert('Pronto', `${trimmedNome} foi atualizado.`);
         return;
       }
 
@@ -119,7 +100,7 @@ export default function PetsScreen() {
         dtNascimento: trimmedDate,
       });
       closeModal();
-      Alert.alert('Sucesso', 'Pet cadastrado na API.');
+      Alert.alert('Pronto', `${trimmedNome} foi cadastrado na clínica.`);
     } catch (error) {
       const message = error instanceof ApiError || error instanceof Error
         ? error.message
@@ -128,25 +109,12 @@ export default function PetsScreen() {
     }
   };
 
-  if (!tutorReady) {
-    return (
-      <ScreenLayout withHeader>
-        <FlowHintCard
-          title="Cadastro de pets bloqueado"
-          message="Complete seu perfil em Meu Perfil para cadastrar seu primeiro pet."
-          buttonTitle="Ir para Meu Perfil"
-          onPress={goToTutorProfile}
-        />
-      </ScreenLayout>
-    );
-  }
-
   if (petsQuery.isLoading) {
     return (
       <ScreenLayout withHeader>
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Carregando pets da API...</Text>
+          <Text style={styles.loadingText}>Carregando seus pets...</Text>
         </View>
       </ScreenLayout>
     );
@@ -181,7 +149,7 @@ export default function PetsScreen() {
       </Pressable>
 
       <Text style={[commonStyles.subtitle, styles.hint]}>
-        Toque no pet para ver o prontuário. Os dados vêm da API.
+        Toque no pet para ver o prontuário. O lápis edita os dados.
       </Text>
       <Text style={[commonStyles.subtitle, styles.count]}>
         {pets.length} pet{pets.length !== 1 ? 's' : ''} cadastrado{pets.length !== 1 ? 's' : ''}
@@ -202,7 +170,7 @@ export default function PetsScreen() {
             especie={item.especie}
             dtNascimento={item.dtNascimento}
             onPress={() => navigation.navigate('PetDetails', { petId: item.id })}
-            onLongPress={() => openEdit(item)}
+            onEdit={() => openEdit(item)}
           />
         )}
         ListEmptyComponent={

@@ -26,6 +26,13 @@ export async function loadTutorProfile(): Promise<TutorProfile | null> {
     return profile;
   }
 
+  if (session.nomeUsuario?.trim()) {
+    return {
+      nome: session.nomeUsuario.trim(),
+      email: session.email,
+    };
+  }
+
   return null;
 }
 

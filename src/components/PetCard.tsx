@@ -9,10 +9,10 @@ type Props = {
   especie?: PetSpecies;
   dtNascimento?: string;
   onPress?: () => void;
-  onLongPress?: () => void;
+  onEdit?: () => void;
 };
 
-export default function PetCard({ nome, especie, dtNascimento, onPress, onLongPress }: Props) {
+export default function PetCard({ nome, especie, dtNascimento, onPress, onEdit }: Props) {
   const initial = nome.charAt(0).toUpperCase();
   const subtitle = [especie, formatPetBirthDate(dtNascimento)].filter(Boolean).join(' · ');
 
@@ -20,7 +20,6 @@ export default function PetCard({ nome, especie, dtNascimento, onPress, onLongPr
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
-      onLongPress={onLongPress}
     >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{initial}</Text>
@@ -30,6 +29,17 @@ export default function PetCard({ nome, especie, dtNascimento, onPress, onLongPr
         <Text style={styles.name}>{nome}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
+
+      {onEdit ? (
+        <Pressable
+          style={({ pressed }) => [styles.editButton, pressed && styles.editButtonPressed]}
+          onPress={onEdit}
+          hitSlop={8}
+          accessibilityLabel={`Editar ${nome}`}
+        >
+          <Ionicons name="pencil" size={18} color={colors.accent} />
+        </Pressable>
+      ) : null}
 
       <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
     </Pressable>
@@ -78,5 +88,18 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.infoBg,
+    borderWidth: 1,
+    borderColor: colors.infoBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editButtonPressed: {
+    opacity: 0.8,
   },
 });
