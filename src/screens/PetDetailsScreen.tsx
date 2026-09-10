@@ -1,17 +1,16 @@
-import { useCallback, useState } from 'react';
 import { View, Text, Alert, Pressable, StyleSheet } from 'react-native';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/ScreenLayout';
 import { colors, commonStyles } from '../theme';
 import type { PetsStackParamList } from '../navigation/types';
-import type { CheckinRecord } from '../types/pet';
-import { getWellnessHint, getWellnessLabel } from '../constants/activityLevels';
 import { formatPetSpecies } from '../constants/petSpecies';
-import { loadLastCheckin } from '../services/petData';
 import { formatPetBirthDate } from '../utils/petBirthDate';
 import { usePetMutations, usePetsQuery } from '../hooks/usePets';
+import { useHealthLogsQuery } from '../hooks/useHealthLogs';
+import { formatLogDate, formatLogSummary } from '../utils/healthLog';
+import { getHealthMetricHint, getHealthMetricLabel } from '../constants/healthMetrics';
 import { ApiError } from '../services/httpClient';
 
 type Route = RouteProp<PetsStackParamList, 'PetDetails'>;
@@ -21,20 +20,14 @@ export default function PetDetailsScreen() {
   const { params } = useRoute<Route>();
   const petsQuery = usePetsQuery();
   const { remove } = usePetMutations();
-  const [lastCheckin, setLastCheckin] = useState<CheckinRecord | null>(null);
-
   const pet = petsQuery.data?.find((item) => item.id === params.petId) ?? null;
-
-  useFocusEffect(
-    useCallback(() => {
-      loadLastCheckin().then(setLastCheckin);
-    }, [])
-  );
+  const logsQuery = useHealthLogsQuery(pet?.idPet ?? 0);
+  const logs = logsQuery.data ?? [];
 
   const handleDelete = () => {
     if (!pet) return;
 
-    Alert.alert('Excluir pet', `Remover ${pet.nome} da API? Essa ação não pode ser desfeita.`, [
+    Alert.alert('Excluir pet', `Remover ${pet.nome} do prontuário? Essa ação não pode ser desfeita.`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir',
@@ -79,7 +72,6 @@ export default function PetDetailsScreen() {
   const initial = pet.nome.charAt(0).toUpperCase();
   const birthLabel = formatPetBirthDate(pet.dtNascimento);
   const breedLabel = formatPetSpecies(pet.especie);
-  const petCheckin = lastCheckin?.petId === pet.id ? lastCheckin : null;
 
   return (
     <ScreenLayout withTabBar contentContainerStyle={styles.screenContent}>
@@ -108,7 +100,7 @@ export default function PetDetailsScreen() {
 
         <Text style={styles.aboutTitle}>Sobre o {pet.nome}</Text>
         <Text style={styles.aboutText}>
-          {pet.nome} é um {(pet.especie ?? 'pet').toLowerCase()} cadastrado na API da clínica.
+          {pet.nome} é um {(pet.especie ?? 'pet').toLowerCase()} cadastrado na clínica.
           Nascimento: {birthLabel}.
         </Text>
 
@@ -123,35 +115,41 @@ export default function PetDetailsScreen() {
         </Pressable>
 
         <Text style={styles.sectionTitle}>Acompanhamento na clínica</Text>
-        {petCheckin ? (
+        {logsQuery.isLoading ? (
           <View style={styles.infoBox}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Comportamento</Text>
-              <Text style={styles.infoValue}>{getWellnessLabel(petCheckin.activity)}</Text>
-              <Text style={styles.infoHint}>{getWellnessHint(petCheckin.activity)}</Text>
-            </View>
-            <View style={styles.infoDivider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Data do registro</Text>
-              <Text style={styles.infoValue}>{petCheckin.date}</Text>
-            </View>
-            {petCheckin.observations.trim() ? (
-              <>
-                <View style={styles.infoDivider} />
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>O que o tutor notou</Text>
-                  <Text style={styles.infoValue}>{petCheckin.observations.trim()}</Text>
-                </View>
-              </>
-            ) : null}
+            <Text style={styles.emptyFollowUp}>Carregando registros...</Text>
           </View>
-        ) : (
+        ) : logs.length === 0 ? (
           <View style={styles.infoBox}>
             <Text style={styles.emptyFollowUp}>
-              Nenhum registro do dia para este pet ainda. Use a aba Registro do dia para contar
-              como ele está em casa.
+              Nenhum registro deste pet ainda. Use a aba Registro do dia para anotar peso,
+              alimentação ou outro dado para o veterinário.
             </Text>
           </View>
+        ) : (
+          logs.map((log, index) => (
+            <View key={log.id} style={[styles.infoBox, index > 0 && styles.logSpacing]}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>{getHealthMetricLabel(log.metrica)}</Text>
+                <Text style={styles.infoValue}>{formatLogSummary(log)}</Text>
+                <Text style={styles.infoHint}>{getHealthMetricHint(log.metrica)}</Text>
+              </View>
+              <View style={styles.infoDivider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Data do registro</Text>
+                <Text style={styles.infoValue}>{formatLogDate(log.dtRegistro)}</Text>
+              </View>
+              {log.observations ? (
+                <>
+                  <View style={styles.infoDivider} />
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Recado do tutor</Text>
+                    <Text style={styles.infoValue}>{log.observations}</Text>
+                  </View>
+                </>
+              ) : null}
+            </View>
+          ))
         )}
       </View>
     </ScreenLayout>
@@ -250,7 +248,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-            borderColor: colors.danger,
+    borderColor: colors.danger,
     borderRadius: 24,
     paddingVertical: 12,
     alignItems: 'center',
@@ -278,6 +276,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  logSpacing: {
+    marginTop: 10,
   },
   infoRow: {
     gap: 6,

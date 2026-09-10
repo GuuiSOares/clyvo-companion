@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import type { Pet, CheckinRecord } from '../types/pet';
-import { getWellnessLabel } from '../constants/activityLevels';
+import { formatMetricValue } from '../constants/healthMetrics';
 import { formatPetSpecies } from '../constants/petSpecies';
 import { formatPetBirthDate } from '../utils/petBirthDate';
 
@@ -47,7 +47,7 @@ function InfoRow({
 
 function getCheckinLabelForPet(checkin: CheckinRecord | null) {
   if (!checkin) return 'Ainda não registrado';
-  return `${getWellnessLabel(checkin.activity)} · ${checkin.date}`;
+  return `${formatMetricValue(checkin.metrica, checkin.vlMetrica)} · ${checkin.date}`;
 }
 
 export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSelectPet }: Props) {

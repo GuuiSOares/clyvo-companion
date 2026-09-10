@@ -4,12 +4,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import type { RootTabParamList } from '../navigation/types';
-import type { Pet, CheckinRecord } from '../types/pet';
+import type { Pet } from '../types/pet';
 import type { TutorProfile } from '../types/tutor';
-import { getWellnessLabel } from '../constants/activityLevels';
-import { loadLastCheckin, getHighlightedPet } from '../services/petData';
-import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
+import { formatMetricValue } from '../constants/healthMetrics';
+import { useAuth } from '../context/AuthContext';
+import { getHighlightedPet } from '../services/petData';
+import { loadTutorProfile } from '../services/tutorData';
 import { usePetsQuery } from '../hooks/usePets';
+import { useHealthLogsQuery } from '../hooks/useHealthLogs';
+import { getLatestLogForPet, toCheckinRecord } from '../utils/healthLog';
 import { colors } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import AppLogo from '../components/AppLogo';
@@ -31,23 +34,19 @@ function getPetsSubtitle(pets: Pet[]) {
 
 export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
+  const { session } = useAuth();
   const petsQuery = usePetsQuery();
   const pets = petsQuery.data ?? [];
+  const logsQuery = useHealthLogsQuery();
+  const logs = logsQuery.data ?? [];
   const [tutor, setTutor] = useState<TutorProfile | null>(null);
   const [summaryPet, setSummaryPet] = useState<Pet | null>(null);
-  const [lastCheckin, setLastCheckin] = useState<CheckinRecord | null>(null);
 
-  const tutorReady = hasTutorProfile(tutor);
-  const firstName = tutor?.nome.split(' ')[0] ?? 'tutor';
+  const displayName = tutor?.nome?.trim() || session?.nomeUsuario?.trim() || 'tutor';
+  const firstName = displayName.split(' ')[0] ?? 'tutor';
 
   const loadHomeData = useCallback(async () => {
-    const [tutorProfile, checkin] = await Promise.all([
-      loadTutorProfile(),
-      loadLastCheckin(),
-    ]);
-
-    setTutor(tutorProfile);
-    setLastCheckin(checkin);
+    setTutor(await loadTutorProfile());
   }, []);
 
   useFocusEffect(
@@ -58,31 +57,41 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     setSummaryPet((current) => {
-      const defaultPet = getHighlightedPet(pets, lastCheckin);
+      const latest = logs[0];
+      const fromLog = latest
+        ? pets.find((pet) => pet.idPet === latest.idPet) ?? null
+        : null;
+      const defaultPet = fromLog ?? getHighlightedPet(pets, null);
       if (!defaultPet) return null;
       if (current && pets.some((pet) => pet.id === current.id)) {
         return current;
       }
       return defaultPet;
     });
-  }, [pets, lastCheckin]);
+  }, [pets, logs]);
+
+  const latestLog = summaryPet
+    ? getLatestLogForPet(logs, summaryPet.idPet)
+    : logs[0] ?? null;
+  const lastCheckin = latestLog && Number.isFinite(latestLog.vlMetrica)
+    ? {
+        ...toCheckinRecord(latestLog),
+        petName: latestLog.nomePet || summaryPet?.nome || '',
+      }
+    : null;
 
   const remindersSubtitle =
-    !tutorReady
-      ? 'Crie seu perfil primeiro'
-      : pets.length === 0
-        ? 'Cadastre um pet'
-        : 'Ver pets cadastrados';
+    pets.length === 0
+      ? 'Cadastre um pet'
+      : 'Ver pets cadastrados';
 
-  const heroCaption = !tutorReady
-    ? 'Comece criando seu perfil de tutor na aba Meu Perfil.'
-    : pets.length === 0
-      ? 'Cadastre seu pet para iniciar o acompanhamento na clínica.'
-      : lastCheckin
-        ? `${lastCheckin.petName}: ${getWellnessLabel(lastCheckin.activity)} · ${lastCheckin.date}`
+  const heroCaption = pets.length === 0
+    ? 'Cadastre seu pet para iniciar o acompanhamento na clínica.'
+    : lastCheckin
+      ? `${lastCheckin.petName}: ${formatMetricValue(lastCheckin.metrica, lastCheckin.vlMetrica)} · ${lastCheckin.date}`
         : pets.length === 1
-          ? `Conte como ${pets[0].nome} está em casa hoje.`
-          : 'Escolha o pet e registre como ele está hoje.';
+          ? `Acompanhe o peso, a alimentação e o dia a dia de ${pets[0].nome}.`
+          : 'Escolha o pet e registre o que o veterinário precisa ver.';
 
   return (
     <ScreenLayout contentContainerStyle={styles.homeContent}>
@@ -94,7 +103,7 @@ export default function HomeScreen({ navigation }: Props) {
           ) : (
             <View style={styles.tutorAvatar}>
               <Text style={styles.tutorAvatarText}>
-                {tutorReady ? firstName.charAt(0).toUpperCase() : '?'}
+                {firstName.charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
@@ -107,19 +116,10 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </View>
 
-      {!tutorReady ? (
-        <FlowHintCard
-          title="Complete seu perfil de tutor"
-          message="Sua conta já está ativa. Agora informe seu nome em Meu Perfil (foto opcional) para liberar cadastro de pets, registro do dia e prontuário."
-          buttonTitle="Ir para Meu Perfil"
-          onPress={() => navigation.navigate('Settings')}
-        />
-      ) : null}
-
-      {tutorReady && pets.length === 0 ? (
+      {pets.length === 0 ? (
         <FlowHintCard
           title="Próximo passo: cadastrar seu pet"
-          message="Com o perfil de tutor pronto, registre o animal que você acompanha na veterinária."
+          message="Cadastre o animal que você acompanha na veterinária para começar o prontuário."
           buttonTitle="Ir para Meus Pets"
           onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
         />
@@ -132,13 +132,9 @@ export default function HomeScreen({ navigation }: Props) {
             style={({ pressed }) => [
               styles.heroButton,
               pressed && styles.heroButtonPressed,
-              (!tutorReady || pets.length === 0) && styles.heroButtonDisabled,
+              pets.length === 0 && styles.heroButtonDisabled,
             ]}
             onPress={() => {
-              if (!tutorReady) {
-                navigation.navigate('Settings');
-                return;
-              }
               if (pets.length === 0) {
                 navigation.navigate('Pets', { screen: 'PetsList' });
                 return;
@@ -147,7 +143,7 @@ export default function HomeScreen({ navigation }: Props) {
             }}
           >
             <Ionicons name="medkit-outline" size={16} color={colors.textOnDark} />
-            <Text style={styles.heroButtonText}>Registrar como está em casa</Text>
+            <Text style={styles.heroButtonText}>Fazer o registro do dia</Text>
           </Pressable>
           <Text style={styles.heroCaption}>{heroCaption}</Text>
         </View>
@@ -163,7 +159,7 @@ export default function HomeScreen({ navigation }: Props) {
         />
         <QuickActionCard
           title="Registro do dia"
-          subtitle="Conte o que você notou"
+          subtitle="O que o veterinário precisa ver"
           icon={<Ionicons name="clipboard-outline" size={22} color={colors.accent} />}
           onPress={() => navigation.navigate('Checkin')}
         />
@@ -176,7 +172,7 @@ export default function HomeScreen({ navigation }: Props) {
         />
       </View>
 
-      {tutorReady && summaryPet ? (
+      {summaryPet ? (
         <HealthOverviewCard
           pets={pets}
           focusPet={summaryPet}

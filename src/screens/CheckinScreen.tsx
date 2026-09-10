@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,43 +7,45 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/ScreenLayout';
-import ActivitySelector from '../components/ActivitySelector';
-import type { PetActivityLevel } from '../constants/activityLevels';
-import { getWellnessHint, getWellnessLabel } from '../constants/activityLevels';
+import MetricSelector from '../components/MetricSelector';
+import {
+  getHealthMetric,
+  getHealthMetricHint,
+  getHealthMetricLabel,
+  isHealthMetric,
+  parseMetricValue,
+  type HealthMetric,
+} from '../constants/healthMetrics';
 import { formatPetSpecies } from '../constants/petSpecies';
 import { colors, commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
-import { loadLastCheckin, saveLastCheckin } from '../services/petData';
-import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
 import FlowHintCard from '../components/FlowHintCard';
 import { usePetsQuery } from '../hooks/usePets';
+import { useHealthLogMutations, useHealthLogsQuery } from '../hooks/useHealthLogs';
+import { formatLogDate, formatLogSummary, type HealthLog } from '../utils/healthLog';
+import { ApiError } from '../services/httpClient';
 
 export default function CheckinScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const petsQuery = usePetsQuery();
   const pets = petsQuery.data ?? [];
-  const [tutorReady, setTutorReady] = useState(false);
+  const { create, update, remove } = useHealthLogMutations();
   const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
-  const [wellness, setWellness] = useState<PetActivityLevel | null>(null);
+  const [metrica, setMetrica] = useState<HealthMetric | null>(null);
+  const [valor, setValor] = useState('');
   const [observations, setObservations] = useState('');
+  const [editingLog, setEditingLog] = useState<HealthLog | null>(null);
 
-  const loadCheckinData = useCallback(async () => {
-    const tutor = await loadTutorProfile();
-    setTutorReady(hasTutorProfile(tutor));
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadCheckinData();
-    }, [loadCheckinData])
-  );
+  const logsQuery = useHealthLogsQuery(selectedPet?.idPet ?? 0);
+  const logs = logsQuery.data ?? [];
 
   useEffect(() => {
     if (pets.length === 1) {
@@ -60,25 +62,51 @@ export default function CheckinScreen() {
       }
     }
 
-    loadLastCheckin().then((lastCheckin) => {
-      const pet = lastCheckin
-        ? pets.find((item) => item.id === lastCheckin.petId)
-        : undefined;
-      if (pet) {
-        setSelectedPetIdState(pet.id);
-        setSelectedPet(pet);
-        return;
-      }
-      if (pets.length === 0) {
-        setSelectedPetIdState(null);
-        setSelectedPet(null);
-      }
-    });
+    if (pets.length === 0) {
+      setSelectedPetIdState(null);
+      setSelectedPet(null);
+    }
   }, [pets, selectedPetId]);
+
+  const resetForm = () => {
+    setEditingLog(null);
+    setMetrica(null);
+    setValor('');
+    setObservations('');
+  };
 
   const handleSelectPet = (pet: Pet) => {
     setSelectedPetIdState(pet.id);
     setSelectedPet(pet);
+    resetForm();
+  };
+
+  const handleEditLog = (log: HealthLog) => {
+    setEditingLog(log);
+    setMetrica(isHealthMetric(log.metrica) ? log.metrica : null);
+    setValor(String(log.vlMetrica).replace('.', ','));
+    setObservations(log.observations);
+  };
+
+  const handleDeleteLog = (log: HealthLog) => {
+    Alert.alert('Excluir registro', 'Remover este registro do prontuário?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await remove.mutateAsync(log.idLog);
+            if (editingLog?.idLog === log.idLog) resetForm();
+          } catch (error) {
+            Alert.alert(
+              'Erro',
+              error instanceof Error ? error.message : 'Não foi possível excluir o registro.'
+            );
+          }
+        },
+      },
+    ]);
   };
 
   const handleSave = async () => {
@@ -89,47 +117,65 @@ export default function CheckinScreen() {
       return;
     }
 
-    if (!wellness) {
-      Alert.alert('Atenção', 'Escolha como o pet está se comportando hoje.');
+    if (!metrica) {
+      Alert.alert(
+        'Atenção',
+        'Escolha o que você vai registrar: peso, alimentação, exercício, temperatura ou frequência cardíaca.'
+      );
       return;
     }
 
-    await saveLastCheckin({
-      petId: selectedPet.id,
-      petName: selectedPet.nome,
-      activity: wellness,
-      observations: trimmedObservations,
-      date: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-    });
+    const vlMetrica = parseMetricValue(valor);
+    if (vlMetrica === null) {
+      Alert.alert('Atenção', 'Digite o número que você mediu. Use vírgula se precisar, como 12,4.');
+      return;
+    }
 
-    setWellness(null);
-    setObservations('');
+    try {
+      if (editingLog) {
+        await update.mutateAsync({
+          idLog: editingLog.idLog,
+          idPet: selectedPet.idPet,
+          metrica,
+          vlMetrica,
+          observations: trimmedObservations,
+          dtRegistro: editingLog.dtRegistro,
+        });
+        resetForm();
+        Alert.alert(
+          'Registro atualizado',
+          `O veterinário já vê o acompanhamento atualizado de ${selectedPet.nome}.`
+        );
+        return;
+      }
 
-    Alert.alert(
-      'Registro salvo',
-      `O acompanhamento de ${selectedPet.nome} de hoje foi guardado. A clínica pode ver no resumo.`
-    );
+      await create.mutateAsync({
+        idPet: selectedPet.idPet,
+        metrica,
+        vlMetrica,
+        observations: trimmedObservations,
+      });
+      resetForm();
+      Alert.alert(
+        'Registro salvo',
+        `O acompanhamento de ${selectedPet.nome} já está no prontuário para o veterinário.`
+      );
+    } catch (error) {
+      Alert.alert(
+        'Erro',
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar o registro.'
+      );
+    }
   };
-
-  if (!tutorReady) {
-    return (
-      <ScreenLayout withHeader keyboard>
-        <FlowHintCard
-          title="Registro do dia indisponível"
-          message="Complete seu perfil em Meu Perfil antes de registrar como o pet está em casa."
-          buttonTitle="Ir para Meu Perfil"
-          onPress={() => navigation.navigate('Settings')}
-        />
-      </ScreenLayout>
-    );
-  }
 
   if (pets.length === 0) {
     return (
       <ScreenLayout withHeader keyboard>
         <FlowHintCard
           title="Nenhum pet cadastrado"
-          message="Cadastre o pet em Meus Pets para poder contar à clínica como ele está no dia a dia."
+          message="Cadastre o pet em Meus Pets para registrar o que o veterinário precisa acompanhar."
           buttonTitle="Cadastrar pet"
           onPress={() => navigation.navigate('Pets', { screen: 'PetsList' })}
         />
@@ -138,18 +184,19 @@ export default function CheckinScreen() {
   }
 
   const needsPetSelection = pets.length > 1 && !selectedPet;
+  const saving = create.isPending || update.isPending;
 
   return (
     <ScreenLayout withHeader keyboard>
       <View style={styles.introCard}>
-        <Text style={styles.introTitle}>Registro do dia para a clínica</Text>
+        <Text style={styles.introTitle}>Registro para o veterinário</Text>
         <Text style={styles.introText}>
-          Em poucos passos, conte como o pet está em casa. Isso ajuda no acompanhamento entre
-          as consultas — você não precisa usar termos médicos.
+          Anote o que você mediu em casa. O veterinário usa esses números no prontuário. Dá para
+          corrigir ou apagar depois.
         </Text>
       </View>
 
-      <Text style={styles.stepTitle}>1. Qual pet você está acompanhando hoje?</Text>
+      <Text style={styles.stepTitle}>1. Qual pet você está registrando?</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.petSelector}>
         {pets.map((pet) => (
           <Pressable
@@ -176,27 +223,52 @@ export default function CheckinScreen() {
         <View style={styles.selectedPetCard}>
           <Ionicons name="paw" size={18} color={colors.accent} />
           <View style={styles.selectedPetInfo}>
-            <Text style={styles.selectedPetName}>Registrando: {selectedPet.nome}</Text>
-            <Text style={styles.selectedPetBreed}>
-              {formatPetSpecies(selectedPet.especie)}
+            <Text style={styles.selectedPetName}>
+              {editingLog ? `Editando registro de ${selectedPet.nome}` : `Registrando: ${selectedPet.nome}`}
             </Text>
+            <Text style={styles.selectedPetBreed}>{formatPetSpecies(selectedPet.especie)}</Text>
           </View>
         </View>
       ) : null}
 
       <View style={commonStyles.form}>
-        <Text style={styles.stepTitle}>2. Como ele está se comportando?</Text>
+        <Text style={styles.stepTitle}>2. O que você mediu hoje?</Text>
 
-        <ActivitySelector value={wellness} onChange={setWellness} />
+        <MetricSelector value={metrica} onChange={setMetrica} />
 
-        <Text style={styles.stepTitle}>3. Quer contar mais alguma coisa? (opcional)</Text>
+        <Text style={styles.stepTitle}>3. Qual foi o valor?</Text>
         <View style={commonStyles.field}>
-          <Text style={commonStyles.label}>O que você notou hoje</Text>
+          <Text style={commonStyles.label}>
+            {metrica
+              ? `${getHealthMetricLabel(metrica)} (${getHealthMetric(metrica)?.unit})`
+              : 'Número medido'}
+          </Text>
+          <TextInput
+            style={commonStyles.input}
+            value={valor}
+            onChangeText={setValor}
+            placeholder={getHealthMetric(metrica ?? '')?.placeholder ?? 'Escolha o tipo de registro primeiro'}
+            placeholderTextColor={colors.placeholder}
+            keyboardType="decimal-pad"
+            editable={!!metrica}
+          />
+        </View>
+        {metrica ? (
+          <Text style={styles.summaryHint}>{getHealthMetricHint(metrica)}</Text>
+        ) : (
+          <Text style={styles.summaryHint}>
+            Primeiro escolha o tipo de registro. A unidade aparece junto do campo, como kg ou minutos.
+          </Text>
+        )}
+
+        <Text style={styles.stepTitle}>4. Recado para o veterinário (opcional)</Text>
+        <View style={commonStyles.field}>
+          <Text style={commonStyles.label}>O que o veterinário precisa saber</Text>
           <TextInput
             style={[commonStyles.input, commonStyles.textArea]}
             value={observations}
             onChangeText={setObservations}
-            placeholder="Ex: comeu menos, coçou muito, vomitou uma vez..."
+            placeholder="Ex: comeu menos, está mais quieto, vomitou uma vez..."
             placeholderTextColor={colors.placeholder}
             multiline
             numberOfLines={4}
@@ -208,34 +280,81 @@ export default function CheckinScreen() {
           style={({ pressed }) => [
             commonStyles.primaryButton,
             pressed && commonStyles.primaryButtonPressed,
-            needsPetSelection && styles.buttonDisabled,
+            (needsPetSelection || saving) && styles.buttonDisabled,
           ]}
           onPress={handleSave}
+          disabled={saving || needsPetSelection}
         >
-          <Text style={commonStyles.primaryButtonText}>Salvar registro de hoje</Text>
+          <Text style={commonStyles.primaryButtonText}>
+            {saving ? 'Salvando...' : editingLog ? 'Atualizar registro' : 'Salvar registro de hoje'}
+          </Text>
         </Pressable>
+
+        {editingLog ? (
+          <Pressable onPress={resetForm} style={styles.cancelEdit}>
+            <Text style={styles.cancelEditText}>Cancelar edição</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={commonStyles.summaryCard}>
-        <Text style={commonStyles.summaryTitle}>Prévia do que será enviado</Text>
+        <Text style={commonStyles.summaryTitle}>O que o veterinário vai ver</Text>
         <View style={commonStyles.summaryRow}>
           <Text style={commonStyles.summaryLabel}>Pet</Text>
           <Text style={commonStyles.summaryValue}>{selectedPet?.nome ?? '—'}</Text>
         </View>
         <View style={commonStyles.summaryRow}>
-          <Text style={commonStyles.summaryLabel}>Comportamento</Text>
+          <Text style={commonStyles.summaryLabel}>Tipo de registro</Text>
           <Text style={commonStyles.summaryValue}>
-            {wellness ? getWellnessLabel(wellness) : '—'}
+            {metrica ? getHealthMetricLabel(metrica) : '—'}
           </Text>
         </View>
-        {wellness ? (
-          <Text style={styles.summaryHint}>{getWellnessHint(wellness)}</Text>
-        ) : null}
         <View style={commonStyles.summaryRow}>
-          <Text style={commonStyles.summaryLabel}>Detalhes extras</Text>
+          <Text style={commonStyles.summaryLabel}>Valor</Text>
+          <Text style={commonStyles.summaryValue}>
+            {metrica && parseMetricValue(valor) !== null
+              ? formatLogSummary({ metrica, vlMetrica: parseMetricValue(valor)! })
+              : valor.trim() || '—'}
+          </Text>
+        </View>
+        <View style={commonStyles.summaryRow}>
+          <Text style={commonStyles.summaryLabel}>Recado</Text>
           <Text style={commonStyles.summaryValue}>{observations.trim() || 'Nenhum'}</Text>
         </View>
       </View>
+
+      {selectedPet ? (
+        <View style={styles.history}>
+          <Text style={styles.stepTitle}>Registros anteriores</Text>
+          {logsQuery.isLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : logs.length === 0 ? (
+            <Text style={styles.emptyHistory}>Ainda não há registros deste pet.</Text>
+          ) : (
+            logs.map((log) => (
+              <View key={log.id} style={styles.logCard}>
+                <View style={styles.logInfo}>
+                  <Text style={styles.logTitle}>{formatLogSummary(log)}</Text>
+                  <Text style={styles.logDate}>
+                    {getHealthMetricLabel(log.metrica)} · {formatLogDate(log.dtRegistro)}
+                  </Text>
+                  {log.observations ? (
+                    <Text style={styles.logObs}>{log.observations}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.logActions}>
+                  <Pressable onPress={() => handleEditLog(log)} hitSlop={8}>
+                    <Text style={styles.logAction}>Editar</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDeleteLog(log)} hitSlop={8}>
+                    <Text style={[styles.logAction, styles.logDelete]}>Excluir</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      ) : null}
     </ScreenLayout>
   );
 }
@@ -287,12 +406,6 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderWidth: 2,
   },
-  petChipPhoto: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginBottom: 6,
-  },
   petChipAvatar: {
     width: 48,
     height: 48,
@@ -341,6 +454,15 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.7,
   },
+  cancelEdit: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cancelEditText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   summaryHint: {
     fontSize: 12,
     color: colors.textMuted,
@@ -348,5 +470,51 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 8,
     paddingLeft: 2,
+  },
+  history: {
+    marginTop: 8,
+    marginBottom: 24,
+    gap: 10,
+  },
+  emptyHistory: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  logCard: {
+    ...commonStyles.card,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 0,
+  },
+  logInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  logTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  logDate: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  logObs: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  logActions: {
+    gap: 10,
+    alignItems: 'flex-end',
+  },
+  logAction: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  logDelete: {
+    color: colors.danger,
   },
 });
