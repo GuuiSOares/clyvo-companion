@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,9 @@ import {
 import ScreenLayout from '../components/ScreenLayout';
 import AppLogo from '../components/AppLogo';
 import { useAuth } from '../context/AuthContext';
-import { hasRegisteredAccount, loginAccount, registerAccount } from '../services/authData';
+import { loginAccount, registerAccount } from '../services/authData';
+import { saveTutorProfile } from '../services/tutorData';
+import type { AuthSession } from '../types/auth';
 import { colors, commonStyles } from '../theme';
 
 type AuthMode = 'login' | 'register';
@@ -19,22 +21,13 @@ type AuthMode = 'login' | 'register';
 export default function AuthScreen() {
   const { signIn } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
-  const [canRegister, setCanRegister] = useState(true);
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const isRegister = mode === 'register';
-
-  useEffect(() => {
-    hasRegisteredAccount().then((exists) => {
-      setCanRegister(!exists);
-      if (exists) {
-        setMode('login');
-      }
-    });
-  }, []);
 
   const showAlert = (title: string, message: string) => {
     if (Platform.OS === 'web') {
@@ -50,15 +43,16 @@ export default function AuthScreen() {
   };
 
   const switchMode = (nextMode: AuthMode) => {
-    if (nextMode === 'register' && !canRegister) {
-      showAlert(
-        'Conta já cadastrada',
-        'Este aparelho já tem uma conta. Faça login ou limpe os dados em Meu Perfil para recomeçar do zero.'
-      );
-      return;
-    }
     setMode(nextMode);
     resetFields();
+  };
+
+  const finishAuth = async (session: AuthSession) => {
+    await saveTutorProfile({
+      nome: session.nomeUsuario,
+      email: session.email,
+    });
+    signIn(session);
   };
 
   const handleSubmit = async () => {
@@ -72,14 +66,13 @@ export default function AuthScreen() {
           return;
         }
 
-        const result = await registerAccount(email, password);
+        const result = await registerAccount(nome, email, password);
         if (!result.ok) {
           showAlert('Não foi possível criar a conta', result.message);
           return;
         }
 
-        setCanRegister(false);
-        signIn(result.session);
+        await finishAuth(result.session);
         return;
       }
 
@@ -89,7 +82,7 @@ export default function AuthScreen() {
         return;
       }
 
-      signIn(result.session);
+      await finishAuth(result.session);
     } finally {
       setSubmitting(false);
     }
@@ -104,12 +97,26 @@ export default function AuthScreen() {
         </Text>
         <Text style={styles.subtitle}>
           {isRegister
-            ? 'Use e-mail e senha para começar. Depois você completa seu perfil de tutor no app.'
-            : 'Uma conta por aparelho. Seus pets e perfil ficam salvos ao sair e entrar de novo.'}
+            ? 'Cadastro depende da API. Se não estiver liberado, entre com a conta de teste do tutor.'
+            : 'Login na API da Clyvo. A primeira vez pode demorar enquanto o servidor acorda.'}
         </Text>
       </View>
 
       <View style={commonStyles.form}>
+        {isRegister ? (
+          <View style={commonStyles.field}>
+            <Text style={commonStyles.label}>Nome completo</Text>
+            <TextInput
+              style={commonStyles.input}
+              value={nome}
+              onChangeText={setNome}
+              placeholder="Ex: Maria Silva"
+              placeholderTextColor={colors.placeholder}
+              autoCapitalize="words"
+            />
+          </View>
+        ) : null}
+
         <View style={commonStyles.field}>
           <Text style={commonStyles.label}>E-mail</Text>
           <TextInput
@@ -167,29 +174,24 @@ export default function AuthScreen() {
         </Pressable>
       </View>
 
-      {canRegister ? (
-        <View style={styles.switchRow}>
-          <Text style={styles.switchText}>
-            {isRegister ? 'Já tem conta?' : 'Primeira vez no app?'}
-          </Text>
-          <Pressable onPress={() => switchMode(isRegister ? 'login' : 'register')}>
-            <Text style={styles.switchAction}>
-              {isRegister ? 'Fazer login' : 'Criar conta agora'}
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Text style={styles.singleAccountHint}>
-          Este aparelho já possui conta. Para testar outro tutor, use &quot;Limpar todos os dados&quot; em
-          Meu Perfil.
+      <View style={styles.switchRow}>
+        <Text style={styles.switchText}>
+          {isRegister ? 'Já tem conta?' : 'Primeira vez no app?'}
         </Text>
-      )}
+        <Pressable onPress={() => switchMode(isRegister ? 'login' : 'register')}>
+          <Text style={styles.switchAction}>
+            {isRegister ? 'Fazer login' : 'Criar conta agora'}
+          </Text>
+        </Pressable>
+      </View>
 
       <View style={styles.stepsCard}>
-        <Text style={styles.stepsTitle}>Depois de entrar</Text>
-        <Text style={styles.stepsItem}>1. Complete seu perfil em Meu Perfil (nome obrigatório)</Text>
-        <Text style={styles.stepsItem}>2. Cadastre seu pet em Meus Pets</Text>
-        <Text style={styles.stepsItem}>3. Registre o dia e consulte o prontuário</Text>
+        <Text style={styles.stepsTitle}>Conta de teste (tutor)</Text>
+        <Text style={styles.stepsItem}>E-mail: maria@email.com</Text>
+        <Text style={styles.stepsItem}>Senha: senha123</Text>
+        <Text style={styles.stepsItem}>
+          A primeira entrada pode levar cerca de 50s se a API estiver dormindo.
+        </Text>
       </View>
     </ScreenLayout>
   );
@@ -236,15 +238,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.accent,
-  },
-  singleAccountHint: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 20,
-    marginBottom: 24,
-    paddingHorizontal: 8,
   },
   stepsCard: {
     ...commonStyles.card,

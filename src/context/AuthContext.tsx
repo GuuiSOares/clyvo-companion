@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { loadAuthSession, logoutAuth } from '../services/authData';
+import { logoutAuth, restoreApiSession } from '../services/authData';
 import type { AuthSession } from '../types/auth';
 
 type AuthContextValue = {
@@ -17,7 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadAuthSession()
+    restoreApiSession()
       .then(setSession)
       .finally(() => setIsLoading(false));
   }, []);
