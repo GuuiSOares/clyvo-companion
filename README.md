@@ -15,15 +15,13 @@ Projeto da disciplina **Mobile Application Development** — Entrega do **3º Sp
 | Repositório (GitHub Classroom) | https://github.com/2TDSPX/challenge12-clyvo-companion |
 | API Java (Render) | https://challenge-clyvo-companion.onrender.com |
 | Swagger | https://challenge-clyvo-companion.onrender.com/swagger-ui.html |
-| Vídeo demonstrativo (YouTube, não listado) | https://youtu.be/viu-uQ8KbfI |
-
-> Substitua o link do vídeo pelo da Sprint 3 quando gravar (até 5 minutos).
+| Vídeo demonstrativo (YouTube, não listado) | https://youtu.be/B5sZ-Tn_EhU |
 
 ---
 
 ## Conta de teste (tutor)
 
-A API ainda não libera cadastro público (`POST /usuarios` exige autenticação). Use a conta seed:
+Conta seed para testar:
 
 | Campo | Valor |
 |-------|--------|
