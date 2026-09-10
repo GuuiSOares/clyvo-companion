@@ -38,3 +38,21 @@ export type ApiPetBody = {
   especie: string;
   dtNascimento: string;
 };
+
+export type ApiLogSaude = {
+  idLog: number;
+  idPet: number;
+  nomePet?: string;
+  dtRegistro: string;
+  vlMetrica: number;
+  metrica: string;
+  obs: string;
+};
+
+export type ApiLogSaudeBody = {
+  idPet: number;
+  dtRegistro: string;
+  vlMetrica: number;
+  metrica: string;
+  obs: string;
+};

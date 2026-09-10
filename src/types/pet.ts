@@ -1,4 +1,3 @@
-import type { PetActivityLevel } from '../constants/activityLevels';
 import type { PetSpecies } from '../constants/petSpecies';
 
 export type Pet = {
@@ -13,7 +12,8 @@ export type Pet = {
 export type CheckinRecord = {
   petId: string;
   petName: string;
-  activity: PetActivityLevel;
+  metrica: string;
+  vlMetrica: number;
   observations: string;
   date: string;
 };
