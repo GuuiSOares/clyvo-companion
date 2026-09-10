@@ -3,11 +3,11 @@ import type { PetSpecies } from '../constants/petSpecies';
 
 export type Pet = {
   id: string;
+  idPet: number;
+  idUsuario: number;
   nome: string;
-  raca: string;
   especie?: PetSpecies;
-  peso?: string;
-  fotoUri?: string;
+  dtNascimento: string;
 };
 
 export type CheckinRecord = {

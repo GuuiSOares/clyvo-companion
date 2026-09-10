@@ -16,6 +16,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import AppLogo from './src/components/AppLogo';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './src/lib/queryClient';
 import type { RootTabParamList } from './src/navigation/types';
 import { colors } from './src/theme';
 import { hasTutorProfile, loadTutorProfile } from './src/services/tutorData';
@@ -202,7 +204,9 @@ function App() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       <AuthProvider>
-        <AppNavigator />
+        <QueryClientProvider client={queryClient}>
+          <AppNavigator />
+        </QueryClientProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

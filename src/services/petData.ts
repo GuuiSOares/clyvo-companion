@@ -5,17 +5,14 @@ import {
   PETS_STORAGE_KEY,
   LAST_CHECKIN_KEY,
 } from '../constants/storage';
-import { clearAuthData } from './authData';
+import { clearAuthData, loadAuthSession } from './authData';
+import { listPets } from './petApi';
 import type { Pet, CheckinRecord } from '../types/pet';
 
 export async function loadPets(): Promise<Pet[]> {
-  const stored = await AsyncStorage.getItem(PETS_STORAGE_KEY);
-  if (!stored) return [];
-  return JSON.parse(stored) as Pet[];
-}
-
-export async function savePets(pets: Pet[]): Promise<void> {
-  await AsyncStorage.setItem(PETS_STORAGE_KEY, JSON.stringify(pets));
+  const session = await loadAuthSession();
+  if (!session?.idUsuario) return [];
+  return listPets(session.idUsuario);
 }
 
 export function getHighlightedPet(pets: Pet[], lastCheckin: CheckinRecord | null): Pet | null {
