@@ -3,7 +3,7 @@ import { API_CREDENTIALS_KEY, AUTH_ACCOUNTS_KEY, AUTH_SESSION_KEY } from '../con
 import type { AuthSession } from '../types/auth';
 import type { ApiCredentials } from './httpClient';
 import { ApiError, setApiCredentials } from './httpClient';
-import { loginWithApi, logoutFromApi, registerTutor } from './authApi';
+import { loginWithApi, registerTutor } from './authApi';
 import { isValidEmail, isValidPassword, normalizeEmail } from '../utils/validation';
 
 async function persistSession(session: AuthSession, senha: string): Promise<void> {
@@ -86,7 +86,7 @@ export async function registerAccount(
       return {
         ok: false,
         message:
-          'A API ainda não libera cadastro pelo app. Entre com a conta de teste: maria@email.com / senha123.',
+          'Cadastro indisponível no momento. Entre com a conta de demonstração: maria@email.com / senha123.',
       };
     }
 
@@ -134,12 +134,7 @@ export async function loginAccount(
 }
 
 export async function logoutAuth(): Promise<void> {
-  try {
-    await logoutFromApi();
-  } catch {
-    setApiCredentials(null);
-  }
-
+  setApiCredentials(null);
   await AsyncStorage.multiRemove([AUTH_SESSION_KEY, API_CREDENTIALS_KEY]);
 }
 
