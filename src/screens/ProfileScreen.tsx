@@ -7,19 +7,18 @@ import PetCard from '../components/PetCard';
 import FlowHintCard from '../components/FlowHintCard';
 import { commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
-import type { Pet } from '../types/pet';
-import { loadPets } from '../services/petData';
 import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
+import { usePetsQuery } from '../hooks/usePets';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const [tutorReady, setTutorReady] = useState(false);
-  const [pets, setPets] = useState<Pet[]>([]);
+  const petsQuery = usePetsQuery();
+  const pets = petsQuery.data ?? [];
 
   const loadProfileData = useCallback(async () => {
     const tutor = await loadTutorProfile();
     setTutorReady(hasTutorProfile(tutor));
-    setPets(await loadPets());
   }, []);
 
   useFocusEffect(
@@ -71,9 +70,7 @@ export default function ProfileScreen() {
           <PetCard
             nome={item.nome}
             especie={item.especie}
-            raca={item.raca}
-            peso={item.peso}
-            fotoUri={item.fotoUri}
+            dtNascimento={item.dtNascimento}
             onPress={() =>
               navigation.navigate('Pets', {
                 screen: 'PetDetails',

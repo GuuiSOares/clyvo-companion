@@ -1,11 +1,10 @@
-import { useState, useCallback } from 'react';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   View,
   Text,
   TextInput,
-  Image,
   FlatList,
   Modal,
   Pressable,
@@ -14,8 +13,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, commonStyles } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
@@ -24,76 +23,37 @@ import SpeciesSelector from '../components/SpeciesSelector';
 import type { PetSpecies } from '../constants/petSpecies';
 import type { PetsStackParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
-import { normalizePetWeight } from '../utils/petWeight';
-import {
-  loadPets as fetchPets,
-  savePets as persistPets,
-} from '../services/petData';
 import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
 import FlowHintCard from '../components/FlowHintCard';
+import { usePetMutations, usePetsQuery } from '../hooks/usePets';
+import { isValidBirthDate } from '../utils/petBirthDate';
+import { ApiError } from '../services/httpClient';
 
 type PetsListNav = NativeStackNavigationProp<PetsStackParamList, 'PetsList'>;
 
 export default function PetsScreen() {
   const navigation = useNavigation<PetsListNav>();
   const tabNavigation = navigation.getParent();
-  const [tutorReady, setTutorReady] = useState(false);
-  const [pets, setPets] = useState<Pet[]>([]);
+  const petsQuery = usePetsQuery();
+  const { create, update } = usePetMutations();
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [nome, setNome] = useState('');
   const [especie, setEspecie] = useState<PetSpecies | null>(null);
-  const [raca, setRaca] = useState('');
-  const [peso, setPeso] = useState('');
-  const [fotoUri, setFotoUri] = useState('');
-  const loadPets = useCallback(async () => {
-    try {
-      const tutor = await loadTutorProfile();
-      setTutorReady(hasTutorProfile(tutor));
+  const [dtNascimento, setDtNascimento] = useState('');
 
-      const petsList = await fetchPets();
-      setPets(petsList);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível carregar os pets salvos.');
-    }
-  }, []);
+  const pets = petsQuery.data ?? [];
+  const tutorReady = true;
 
   const goToTutorProfile = () => {
     tabNavigation?.navigate('Settings');
   };
 
-  const handleOpenRegister = async () => {
-    const tutor = await loadTutorProfile();
-    if (!hasTutorProfile(tutor)) {
-      Alert.alert(
-        'Perfil do tutor necessário',
-        'Complete seu perfil em Meu Perfil (nome obrigatório) antes de cadastrar um pet.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Criar perfil', onPress: goToTutorProfile },
-        ]
-      );
-      return;
-    }
-    setModalVisible(true);
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadPets();
-    }, [loadPets])
-  );
-
-  const savePets = async (updatedPets: Pet[]) => {
-    await persistPets(updatedPets);
-    setPets(updatedPets);
-  };
-
   const resetForm = () => {
+    setEditingPet(null);
     setNome('');
     setEspecie(null);
-    setRaca('');
-    setPeso('');
-    setFotoUri('');
+    setDtNascimento('');
   };
 
   const closeModal = () => {
@@ -101,51 +61,70 @@ export default function PetsScreen() {
     resetForm();
   };
 
-  const handlePickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher a foto do pet.');
+  const openCreate = async () => {
+    const tutor = await loadTutorProfile();
+    if (!hasTutorProfile(tutor)) {
+      Alert.alert(
+        'Perfil do tutor necessário',
+        'Complete seu perfil em Meu Perfil antes de cadastrar um pet.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Criar perfil', onPress: goToTutorProfile },
+        ]
+      );
       return;
     }
+    resetForm();
+    setModalVisible(true);
+  };
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]?.uri) {
-      setFotoUri(result.assets[0].uri);
-    }
+  const openEdit = (pet: Pet) => {
+    setEditingPet(pet);
+    setNome(pet.nome);
+    setEspecie(pet.especie ?? null);
+    setDtNascimento(pet.dtNascimento);
+    setModalVisible(true);
   };
 
   const handleSavePet = async () => {
     const trimmedNome = nome.trim();
-    const trimmedRaca = raca.trim();
-    const trimmedPeso = peso.trim();
+    const trimmedDate = dtNascimento.trim();
 
-    if (!trimmedNome || !especie || !trimmedRaca || !trimmedPeso) {
-      Alert.alert('Atenção', 'Preencha o nome, o tipo, a raça e o peso do pet.');
+    if (!trimmedNome || !especie || !trimmedDate) {
+      Alert.alert('Atenção', 'Preencha o nome, o tipo e a data de nascimento (AAAA-MM-DD).');
       return;
     }
 
-    const newPet: Pet = {
-      id: Date.now().toString(),
-      nome: trimmedNome,
-      especie,
-      raca: trimmedRaca,
-      peso: normalizePetWeight(trimmedPeso),
-      ...(fotoUri ? { fotoUri } : {}),
-    };
+    if (!isValidBirthDate(trimmedDate)) {
+      Alert.alert('Atenção', 'Use a data no formato AAAA-MM-DD. Ex: 2020-05-10');
+      return;
+    }
 
     try {
-      const updatedPets = [...pets, newPet];
-      await savePets(updatedPets);
+      if (editingPet) {
+        await update.mutateAsync({
+          idPet: editingPet.idPet,
+          nome: trimmedNome,
+          especie,
+          dtNascimento: trimmedDate,
+        });
+        closeModal();
+        Alert.alert('Sucesso', 'Pet atualizado na API.');
+        return;
+      }
+
+      await create.mutateAsync({
+        nome: trimmedNome,
+        especie,
+        dtNascimento: trimmedDate,
+      });
       closeModal();
-      Alert.alert('Sucesso', 'Pet cadastrado com sucesso!');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar o pet.');
+      Alert.alert('Sucesso', 'Pet cadastrado na API.');
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error
+        ? error.message
+        : 'Não foi possível salvar o pet.';
+      Alert.alert('Erro', message);
     }
   };
 
@@ -154,7 +133,7 @@ export default function PetsScreen() {
       <ScreenLayout withHeader>
         <FlowHintCard
           title="Cadastro de pets bloqueado"
-          message="Complete seu perfil em Meu Perfil (nome obrigatório, foto opcional) para cadastrar seu primeiro pet."
+          message="Complete seu perfil em Meu Perfil para cadastrar seu primeiro pet."
           buttonTitle="Ir para Meu Perfil"
           onPress={goToTutorProfile}
         />
@@ -162,17 +141,47 @@ export default function PetsScreen() {
     );
   }
 
+  if (petsQuery.isLoading) {
+    return (
+      <ScreenLayout withHeader>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.loadingText}>Carregando pets da API...</Text>
+        </View>
+      </ScreenLayout>
+    );
+  }
+
+  if (petsQuery.isError) {
+    return (
+      <ScreenLayout withHeader>
+        <FlowHintCard
+          title="Não foi possível carregar os pets"
+          message={
+            petsQuery.error instanceof Error
+              ? petsQuery.error.message
+              : 'Tente de novo em alguns segundos.'
+          }
+          buttonTitle="Tentar de novo"
+          onPress={() => petsQuery.refetch()}
+        />
+      </ScreenLayout>
+    );
+  }
+
+  const saving = create.isPending || update.isPending;
+
   return (
     <ScreenLayout withHeader scrollable={false}>
       <Pressable
         style={({ pressed }) => [styles.registerButton, pressed && styles.registerButtonPressed]}
-        onPress={handleOpenRegister}
+        onPress={openCreate}
       >
         <Text style={styles.registerButtonText}>Cadastrar pet na clínica</Text>
       </Pressable>
 
       <Text style={[commonStyles.subtitle, styles.hint]}>
-        Toque no pet para ver o prontuário na clínica.
+        Toque no pet para ver o prontuário. Os dados vêm da API.
       </Text>
       <Text style={[commonStyles.subtitle, styles.count]}>
         {pets.length} pet{pets.length !== 1 ? 's' : ''} cadastrado{pets.length !== 1 ? 's' : ''}
@@ -185,14 +194,15 @@ export default function PetsScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        onRefresh={() => petsQuery.refetch()}
+        refreshing={petsQuery.isRefetching}
         renderItem={({ item }) => (
           <PetCard
             nome={item.nome}
             especie={item.especie}
-            raca={item.raca}
-            peso={item.peso}
-            fotoUri={item.fotoUri}
+            dtNascimento={item.dtNascimento}
             onPress={() => navigation.navigate('PetDetails', { petId: item.id })}
+            onLongPress={() => openEdit(item)}
           />
         )}
         ListEmptyComponent={
@@ -214,7 +224,9 @@ export default function PetsScreen() {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Cadastrar Novo Pet</Text>
+                <Text style={styles.modalTitle}>
+                  {editingPet ? 'Editar pet' : 'Cadastrar Novo Pet'}
+                </Text>
                 <Pressable
                   style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}
                   onPress={closeModal}
@@ -231,63 +243,45 @@ export default function PetsScreen() {
                 nestedScrollEnabled
                 contentContainerStyle={styles.modalScrollContent}
               >
-              <View style={commonStyles.field}>
-                <Text style={commonStyles.label}>Nome do Pet</Text>
-                <TextInput
-                  style={commonStyles.input}
-                  value={nome}
-                  onChangeText={setNome}
-                  placeholder="Ex: Thor"
-                  placeholderTextColor={colors.placeholder}
-                />
-              </View>
+                <View style={commonStyles.field}>
+                  <Text style={commonStyles.label}>Nome do Pet</Text>
+                  <TextInput
+                    style={commonStyles.input}
+                    value={nome}
+                    onChangeText={setNome}
+                    placeholder="Ex: Thor"
+                    placeholderTextColor={colors.placeholder}
+                  />
+                </View>
 
-              <SpeciesSelector value={especie} onChange={setEspecie} />
+                <SpeciesSelector value={especie} onChange={setEspecie} />
 
-              <View style={commonStyles.field}>
-                <Text style={commonStyles.label}>Raça</Text>
-                <TextInput
-                  style={commonStyles.input}
-                  value={raca}
-                  onChangeText={setRaca}
-                  placeholder="Ex: Labrador"
-                  placeholderTextColor={colors.placeholder}
-                />
-              </View>
+                <View style={commonStyles.field}>
+                  <Text style={commonStyles.label}>Nascimento (AAAA-MM-DD)</Text>
+                  <TextInput
+                    style={commonStyles.input}
+                    value={dtNascimento}
+                    onChangeText={setDtNascimento}
+                    placeholder="Ex: 2020-05-10"
+                    placeholderTextColor={colors.placeholder}
+                    autoCapitalize="none"
+                  />
+                </View>
 
-              <View style={commonStyles.field}>
-                <Text style={commonStyles.label}>Peso (kg)</Text>
-                <TextInput
-                  style={commonStyles.input}
-                  value={peso}
-                  onChangeText={setPeso}
-                  placeholder="Ex: 12"
-                  keyboardType="decimal-pad"
-                  placeholderTextColor={colors.placeholder}
-                  keyboardType="default"
-                />
-              </View>
-
-              <Pressable
-                style={({ pressed }) => [styles.pickPhotoButton, pressed && styles.pickPhotoButtonPressed]}
-                onPress={handlePickImage}
-              >
-                <Text style={styles.pickPhotoButtonText}>Escolher foto (opcional)</Text>
-              </Pressable>
-
-              {fotoUri ? <Image source={{ uri: fotoUri }} style={styles.thumbnail} /> : null}
-
-              <Pressable
-                style={({ pressed }) => [
-                  commonStyles.primaryButton,
-                  pressed && commonStyles.primaryButtonPressed,
-                  styles.saveButton,
-                ]}
-                onPress={handleSavePet}
-              >
-                <Text style={commonStyles.primaryButtonText}>Salvar</Text>
-              </Pressable>
-
+                <Pressable
+                  style={({ pressed }) => [
+                    commonStyles.primaryButton,
+                    pressed && commonStyles.primaryButtonPressed,
+                    styles.saveButton,
+                    saving && styles.buttonDisabled,
+                  ]}
+                  onPress={handleSavePet}
+                  disabled={saving}
+                >
+                  <Text style={commonStyles.primaryButtonText}>
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Text>
+                </Pressable>
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -298,6 +292,15 @@ export default function PetsScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    alignItems: 'center',
+    paddingTop: 48,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
   registerButton: {
     backgroundColor: colors.primaryLight,
     borderRadius: 24,
@@ -394,33 +397,10 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     backgroundColor: colors.infoBg,
   },
-  pickPhotoButton: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 24,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  pickPhotoButtonPressed: {
-    backgroundColor: colors.infoBg,
-  },
-  pickPhotoButtonText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  thumbnail: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignSelf: 'center',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: colors.accent,
-  },
   saveButton: {
     marginTop: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });

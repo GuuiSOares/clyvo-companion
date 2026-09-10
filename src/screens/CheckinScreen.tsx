@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
-  Image,
   Pressable,
   Alert,
   StyleSheet,
@@ -20,14 +19,16 @@ import { formatPetSpecies } from '../constants/petSpecies';
 import { colors, commonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
-import { loadPets, loadLastCheckin, saveLastCheckin } from '../services/petData';
+import { loadLastCheckin, saveLastCheckin } from '../services/petData';
 import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
 import FlowHintCard from '../components/FlowHintCard';
+import { usePetsQuery } from '../hooks/usePets';
 
 export default function CheckinScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+  const petsQuery = usePetsQuery();
+  const pets = petsQuery.data ?? [];
   const [tutorReady, setTutorReady] = useState(false);
-  const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetIdState] = useState<string | null>(null);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [wellness, setWellness] = useState<PetActivityLevel | null>(null);
@@ -36,27 +37,6 @@ export default function CheckinScreen() {
   const loadCheckinData = useCallback(async () => {
     const tutor = await loadTutorProfile();
     setTutorReady(hasTutorProfile(tutor));
-
-    const [petsList, lastCheckin] = await Promise.all([loadPets(), loadLastCheckin()]);
-    setPets(petsList);
-
-    if (petsList.length === 1) {
-      setSelectedPetIdState(petsList[0].id);
-      setSelectedPet(petsList[0]);
-      return;
-    }
-
-    if (lastCheckin) {
-      const pet = petsList.find((item) => item.id === lastCheckin.petId);
-      if (pet) {
-        setSelectedPetIdState(pet.id);
-        setSelectedPet(pet);
-        return;
-      }
-    }
-
-    setSelectedPetIdState(null);
-    setSelectedPet(null);
   }, []);
 
   useFocusEffect(
@@ -64,6 +44,37 @@ export default function CheckinScreen() {
       loadCheckinData();
     }, [loadCheckinData])
   );
+
+  useEffect(() => {
+    if (pets.length === 1) {
+      setSelectedPetIdState(pets[0].id);
+      setSelectedPet(pets[0]);
+      return;
+    }
+
+    if (selectedPetId) {
+      const pet = pets.find((item) => item.id === selectedPetId);
+      if (pet) {
+        setSelectedPet(pet);
+        return;
+      }
+    }
+
+    loadLastCheckin().then((lastCheckin) => {
+      const pet = lastCheckin
+        ? pets.find((item) => item.id === lastCheckin.petId)
+        : undefined;
+      if (pet) {
+        setSelectedPetIdState(pet.id);
+        setSelectedPet(pet);
+        return;
+      }
+      if (pets.length === 0) {
+        setSelectedPetIdState(null);
+        setSelectedPet(null);
+      }
+    });
+  }, [pets, selectedPetId]);
 
   const handleSelectPet = (pet: Pet) => {
     setSelectedPetIdState(pet.id);
@@ -88,7 +99,7 @@ export default function CheckinScreen() {
       petName: selectedPet.nome,
       activity: wellness,
       observations: trimmedObservations,
-      date: new Date().toLocaleDateString('pt-BR'),
+      date: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
 
     setWellness(null);
@@ -149,13 +160,9 @@ export default function CheckinScreen() {
             ]}
             onPress={() => handleSelectPet(pet)}
           >
-            {pet.fotoUri ? (
-              <Image source={{ uri: pet.fotoUri }} style={styles.petChipPhoto} />
-            ) : (
-              <View style={styles.petChipAvatar}>
-                <Text style={styles.petChipAvatarText}>{pet.nome.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
+            <View style={styles.petChipAvatar}>
+              <Text style={styles.petChipAvatarText}>{pet.nome.charAt(0).toUpperCase()}</Text>
+            </View>
             <Text style={styles.petChipName}>{pet.nome}</Text>
           </Pressable>
         ))}
@@ -171,7 +178,7 @@ export default function CheckinScreen() {
           <View style={styles.selectedPetInfo}>
             <Text style={styles.selectedPetName}>Registrando: {selectedPet.nome}</Text>
             <Text style={styles.selectedPetBreed}>
-              {formatPetSpecies(selectedPet.especie, selectedPet.raca)}
+              {formatPetSpecies(selectedPet.especie)}
             </Text>
           </View>
         </View>

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  Image,
   Pressable,
   Modal,
   StyleSheet,
@@ -13,7 +12,7 @@ import { colors } from '../theme';
 import type { Pet, CheckinRecord } from '../types/pet';
 import { getWellnessLabel } from '../constants/activityLevels';
 import { formatPetSpecies } from '../constants/petSpecies';
-import { formatPetWeight } from '../utils/petWeight';
+import { formatPetBirthDate } from '../utils/petBirthDate';
 
 type Props = {
   pets: Pet[];
@@ -86,7 +85,7 @@ export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSele
       </View>
 
       <Text style={styles.summary}>
-        Resumo de {focusPet.nome} ({formatPetSpecies(focusPet.especie, focusPet.raca)}).
+        Resumo de {focusPet.nome} ({formatPetSpecies(focusPet.especie)}).
       </Text>
 
       {showPetPicker ? (
@@ -102,7 +101,7 @@ export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSele
 
       <View style={styles.infoList}>
         <InfoRow icon="paw-outline" label="Pet em foco" value={focusPet.nome} />
-        <InfoRow icon="scale-outline" label="Peso" value={formatPetWeight(focusPet.peso)} />
+        <InfoRow icon="calendar-outline" label="Nascimento" value={formatPetBirthDate(focusPet.dtNascimento)} />
         <InfoRow
           icon="clipboard-outline"
           label="Último registro"
@@ -151,17 +150,13 @@ export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSele
                     ]}
                     onPress={() => handleSelectPet(pet)}
                   >
-                    {pet.fotoUri ? (
-                      <Image source={{ uri: pet.fotoUri }} style={styles.petOptionPhoto} />
-                    ) : (
-                      <View style={styles.petOptionAvatar}>
-                        <Text style={styles.petOptionAvatarText}>{initial}</Text>
-                      </View>
-                    )}
+                    <View style={styles.petOptionAvatar}>
+                      <Text style={styles.petOptionAvatarText}>{initial}</Text>
+                    </View>
                     <View style={styles.petOptionInfo}>
                       <Text style={styles.petOptionName}>{pet.nome}</Text>
                       <Text style={styles.petOptionMeta}>
-                        {formatPetSpecies(pet.especie, pet.raca)} · {formatPetWeight(pet.peso)}
+                        {formatPetSpecies(pet.especie)} · {formatPetBirthDate(pet.dtNascimento)}
                       </Text>
                     </View>
                     {selected ? (

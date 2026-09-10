@@ -1,34 +1,30 @@
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
-import { formatPetWeight } from '../utils/petWeight';
+import { formatPetBirthDate } from '../utils/petBirthDate';
 import type { PetSpecies } from '../constants/petSpecies';
 
 type Props = {
   nome: string;
   especie?: PetSpecies;
-  raca: string;
-  peso?: string;
-  fotoUri?: string;
+  dtNascimento?: string;
   onPress?: () => void;
+  onLongPress?: () => void;
 };
 
-export default function PetCard({ nome, peso, fotoUri, onPress }: Props) {
+export default function PetCard({ nome, especie, dtNascimento, onPress, onLongPress }: Props) {
   const initial = nome.charAt(0).toUpperCase();
-  const subtitle = formatPetWeight(peso);
+  const subtitle = [especie, formatPetBirthDate(dtNascimento)].filter(Boolean).join(' · ');
 
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
+      onLongPress={onLongPress}
     >
-      {fotoUri ? (
-        <Image source={{ uri: fotoUri }} style={styles.photo} />
-      ) : (
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
-      )}
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{initial}</Text>
+      </View>
 
       <View style={styles.info}>
         <Text style={styles.name}>{nome}</Text>
@@ -53,13 +49,6 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.92,
-  },
-  photo: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   avatar: {
     width: 64,

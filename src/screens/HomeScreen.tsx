@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -7,8 +7,9 @@ import type { RootTabParamList } from '../navigation/types';
 import type { Pet, CheckinRecord } from '../types/pet';
 import type { TutorProfile } from '../types/tutor';
 import { getWellnessLabel } from '../constants/activityLevels';
-import { loadPets, loadLastCheckin, getHighlightedPet } from '../services/petData';
+import { loadLastCheckin, getHighlightedPet } from '../services/petData';
 import { hasTutorProfile, loadTutorProfile } from '../services/tutorData';
+import { usePetsQuery } from '../hooks/usePets';
 import { colors } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import AppLogo from '../components/AppLogo';
@@ -30,8 +31,9 @@ function getPetsSubtitle(pets: Pet[]) {
 
 export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
+  const petsQuery = usePetsQuery();
+  const pets = petsQuery.data ?? [];
   const [tutor, setTutor] = useState<TutorProfile | null>(null);
-  const [pets, setPets] = useState<Pet[]>([]);
   const [summaryPet, setSummaryPet] = useState<Pet | null>(null);
   const [lastCheckin, setLastCheckin] = useState<CheckinRecord | null>(null);
 
@@ -39,23 +41,13 @@ export default function HomeScreen({ navigation }: Props) {
   const firstName = tutor?.nome.split(' ')[0] ?? 'tutor';
 
   const loadHomeData = useCallback(async () => {
-    const [tutorProfile, petsList, checkin] = await Promise.all([
+    const [tutorProfile, checkin] = await Promise.all([
       loadTutorProfile(),
-      loadPets(),
       loadLastCheckin(),
     ]);
 
     setTutor(tutorProfile);
-    setPets(petsList);
     setLastCheckin(checkin);
-    setSummaryPet((current) => {
-      const defaultPet = getHighlightedPet(petsList, checkin);
-      if (!defaultPet) return null;
-      if (current && petsList.some((pet) => pet.id === current.id)) {
-        return current;
-      }
-      return defaultPet;
-    });
   }, []);
 
   useFocusEffect(
@@ -63,6 +55,17 @@ export default function HomeScreen({ navigation }: Props) {
       loadHomeData();
     }, [loadHomeData])
   );
+
+  useEffect(() => {
+    setSummaryPet((current) => {
+      const defaultPet = getHighlightedPet(pets, lastCheckin);
+      if (!defaultPet) return null;
+      if (current && pets.some((pet) => pet.id === current.id)) {
+        return current;
+      }
+      return defaultPet;
+    });
+  }, [pets, lastCheckin]);
 
   const remindersSubtitle =
     !tutorReady
