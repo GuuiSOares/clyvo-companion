@@ -4,15 +4,13 @@ Aplicativo mobile em **React Native com Expo**, voltado ao **tutor** na clínica
 
 Projeto da disciplina **Mobile Application Development** — Entrega do **3º Sprint**.
 
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/GDVnG_N-)
-
 ---
 
 ## Links da entrega
 
 | Item | Link |
 |------|------|
-| Repositório (GitHub Classroom) | https://github.com/2TDSPX/challenge12-clyvo-companion |
+| Repositório | https://github.com/GuuiSOares/clyvo-companion |
 | API Java (Render) | https://challenge-clyvo-companion.onrender.com |
 | Swagger | https://challenge-clyvo-companion.onrender.com/swagger-ui.html |
 | Vídeo demonstrativo (YouTube, não listado) | https://youtu.be/B5sZ-Tn_EhU |
@@ -74,8 +72,8 @@ Nada precisa ser configurado além do Node e do Expo. A URL da API já está no 
 ### Instalação
 
 ```bash
-git clone https://github.com/2TDSPX/challenge12-clyvo-companion.git
-cd challenge12-clyvo-companion
+git clone https://github.com/GuuiSOares/clyvo-companion.git
+cd clyvo-companion
 npm install
 ```
 
