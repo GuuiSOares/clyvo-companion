@@ -11,7 +11,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import PetsNavigator from './src/navigation/PetsNavigator';
 import CheckinScreen from './src/screens/CheckinScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
+import SettingsNavigator from './src/navigation/SettingsNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import AppLogo from './src/components/AppLogo';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -111,7 +111,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsNavigator}
         options={{
           ...headerOptions,
           ...headerLogoOptions,

@@ -9,17 +9,15 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { RootTabParamList } from '../navigation/types';
+import type { SettingsStackParamList } from '../navigation/types';
 import ScreenLayout from '../components/ScreenLayout';
 import AppButton from '../components/AppButton';
 import { useTheme, type AppColors, type CommonStyles, type ThemeMode } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { hasTutorProfile, loadTutorProfile, saveTutorProfile } from '../services/tutorData';
-
-type Props = BottomTabScreenProps<RootTabParamList, 'Settings'>;
 
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: 'system', label: 'Sistema' },
@@ -28,6 +26,7 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 ];
 
 export default function SettingsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<SettingsStackParamList>>();
   const { colors, commonStyles, mode, setMode } = useTheme();
   const styles = useMemo(() => createStyles(colors, commonStyles), [colors, commonStyles]);
   const { session, signOut } = useAuth();
@@ -203,6 +202,13 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <AppButton
+        title="Sobre o App"
+        onPress={() => navigation.navigate('AboutApp')}
+        variant="secondary"
+        style={styles.signOutButton}
+      />
 
       <AppButton
         title="Sair da conta"

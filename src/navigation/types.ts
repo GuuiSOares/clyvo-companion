@@ -5,10 +5,15 @@ export type PetsStackParamList = {
   PetDetails: { petId: string };
 };
 
+export type SettingsStackParamList = {
+  SettingsHome: undefined;
+  AboutApp: undefined;
+};
+
 export type RootTabParamList = {
   Home: undefined;
   Pets: NavigatorScreenParams<PetsStackParamList>;
   Checkin: undefined;
   Profile: undefined;
-  Settings: undefined;
+  Settings: NavigatorScreenParams<SettingsStackParamList>;
 };
