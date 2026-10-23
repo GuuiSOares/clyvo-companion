@@ -1,8 +1,10 @@
+import './src/setup/ignoreExpoGoPushWarning';
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,8 +21,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/lib/queryClient';
 import type { RootTabParamList } from './src/navigation/types';
 import { ThemeProvider, useTheme } from './src/theme';
+import { listenForDayLogNotification } from './src/services/dayLogNotification';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const navigationRef = createNavigationContainerRef<RootTabParamList>();
 
 const TAB_BAR_HEIGHT = 56;
 const TAB_BAR_EXTRA_BOTTOM = 10;
@@ -129,6 +133,13 @@ function AppNavigator() {
   const { session, isLoading } = useAuth();
   const { colors, navigationTheme, statusBarStyle } = useTheme();
 
+  useEffect(() => {
+    const subscription = listenForDayLogNotification(() => {
+      if (navigationRef.isReady()) navigationRef.navigate('Checkin');
+    });
+    return () => subscription.remove();
+  }, []);
+
   if (isLoading) {
     return (
       <View style={[styles.boot, { backgroundColor: colors.background }]}>
@@ -138,7 +149,7 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <StatusBar style={statusBarStyle} />
       {session ? <MainTabs /> : <AuthScreen />}
     </NavigationContainer>

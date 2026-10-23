@@ -31,6 +31,7 @@ import { usePetsQuery } from '../hooks/usePets';
 import { useHealthLogMutations, useHealthLogsQuery } from '../hooks/useHealthLogs';
 import { formatLogDate, formatLogSummary, type HealthLog } from '../utils/healthLog';
 import { ApiError } from '../services/httpClient';
+import { notifyDayLogSaved } from '../services/dayLogNotification';
 
 export default function CheckinScreen() {
   const { colors, commonStyles } = useTheme();
@@ -157,6 +158,7 @@ export default function CheckinScreen() {
         vlMetrica,
         observations: trimmedObservations,
       });
+      await notifyDayLogSaved(selectedPet.nome);
       resetForm();
       Alert.alert(
         'Registro salvo',

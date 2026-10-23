@@ -12,6 +12,7 @@ function readCommitHash() {
 module.exports = () => ({
   expo: {
     ...appJson.expo,
+    plugins: [...(appJson.expo.plugins ?? []), 'expo-notifications'],
     extra: {
       ...(appJson.expo.extra ?? {}),
       commitHash: readCommitHash(),
