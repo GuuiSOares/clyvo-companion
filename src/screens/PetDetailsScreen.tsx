@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { View, Text, Alert, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/ScreenLayout';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors, type CommonStyles } from '../theme';
 import type { PetsStackParamList } from '../navigation/types';
 import { formatPetSpecies } from '../constants/petSpecies';
 import { formatPetBirthDate } from '../utils/petBirthDate';
@@ -16,6 +17,8 @@ import { ApiError } from '../services/httpClient';
 type Route = RouteProp<PetsStackParamList, 'PetDetails'>;
 
 export default function PetDetailsScreen() {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors, commonStyles), [colors, commonStyles]);
   const navigation = useNavigation();
   const { params } = useRoute<Route>();
   const petsQuery = usePetsQuery();
@@ -156,7 +159,8 @@ export default function PetDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors, commonStyles: CommonStyles) {
+  return StyleSheet.create({
   screenContent: {
     paddingHorizontal: 0,
     paddingTop: 0,
@@ -311,4 +315,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 22,
   },
-});
+  });
+}

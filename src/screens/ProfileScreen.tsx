@@ -4,11 +4,12 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import ScreenLayout from '../components/ScreenLayout';
 import PetCard from '../components/PetCard';
 import FlowHintCard from '../components/FlowHintCard';
-import { commonStyles } from '../theme';
+import { useTheme } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import { usePetsQuery } from '../hooks/usePets';
 
 export default function ProfileScreen() {
+  const { commonStyles } = useTheme();
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const petsQuery = usePetsQuery();
   const pets = petsQuery.data ?? [];

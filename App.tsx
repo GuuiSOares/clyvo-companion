@@ -18,28 +18,27 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/lib/queryClient';
 import type { RootTabParamList } from './src/navigation/types';
-import { colors } from './src/theme';
+import { ThemeProvider, useTheme } from './src/theme';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 const TAB_BAR_HEIGHT = 56;
 const TAB_BAR_EXTRA_BOTTOM = 10;
 
-const headerOptions = {
-  headerStyle: { backgroundColor: colors.background },
-  headerTintColor: colors.text,
-  headerTitleStyle: { fontWeight: '600' as const },
-  headerShadowVisible: false,
-};
-
-const headerLogoOptions = {
-  headerTitle: () => <AppLogo width={170} height={44} />,
-  headerTitleAlign: 'center' as const,
-};
-
 function MainTabs() {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 10) + TAB_BAR_EXTRA_BOTTOM;
+  const headerOptions = {
+    headerStyle: { backgroundColor: colors.background },
+    headerTintColor: colors.text,
+    headerTitleStyle: { fontWeight: '600' as const },
+    headerShadowVisible: false,
+  };
+  const headerLogoOptions = {
+    headerTitle: () => <AppLogo width={170} height={44} />,
+    headerTitleAlign: 'center' as const,
+  };
 
   return (
     <Tab.Navigator
@@ -128,17 +127,19 @@ function MainTabs() {
 
 function AppNavigator() {
   const { session, isLoading } = useAuth();
+  const { colors, navigationTheme, statusBarStyle } = useTheme();
 
   if (isLoading) {
     return (
-      <View style={styles.boot}>
+      <View style={[styles.boot, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
+      <StatusBar style={statusBarStyle} />
       {session ? <MainTabs /> : <AuthScreen />}
     </NavigationContainer>
   );
@@ -147,12 +148,13 @@ function AppNavigator() {
 function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <AppNavigator />
-        </QueryClientProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <AppNavigator />
+          </QueryClientProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -160,7 +162,6 @@ function App() {
 const styles = StyleSheet.create({
   boot: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },

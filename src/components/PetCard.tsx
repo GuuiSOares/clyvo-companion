@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 import { formatPetBirthDate } from '../utils/petBirthDate';
 import type { PetSpecies } from '../constants/petSpecies';
 
@@ -13,6 +14,8 @@ type Props = {
 };
 
 export default function PetCard({ nome, especie, dtNascimento, onPress, onEdit }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const initial = nome.charAt(0).toUpperCase();
   const subtitle = [especie, formatPetBirthDate(dtNascimento)].filter(Boolean).join(' · ');
 
@@ -46,60 +49,62 @@ export default function PetCard({ nome, especie, dtNascimento, onPress, onEdit }
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-  },
-  cardPressed: {
-    opacity: 0.92,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    backgroundColor: colors.infoBg,
-    borderWidth: 1,
-    borderColor: colors.infoBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  info: {
-    flex: 1,
-    gap: 4,
-    justifyContent: 'center',
-  },
-  name: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textMuted,
-  },
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.infoBg,
-    borderWidth: 1,
-    borderColor: colors.infoBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editButtonPressed: {
-    opacity: 0.8,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    cardPressed: {
+      opacity: 0.92,
+    },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: 14,
+      backgroundColor: colors.infoBg,
+      borderWidth: 1,
+      borderColor: colors.infoBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.accent,
+    },
+    info: {
+      flex: 1,
+      gap: 4,
+      justifyContent: 'center',
+    },
+    name: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    editButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.infoBg,
+      borderWidth: 1,
+      borderColor: colors.infoBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editButtonPressed: {
+      opacity: 0.8,
+    },
+  });
+}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -13,7 +13,7 @@ import { loadTutorProfile } from '../services/tutorData';
 import { usePetsQuery } from '../hooks/usePets';
 import { useHealthLogsQuery } from '../hooks/useHealthLogs';
 import { getLatestLogForPet, toCheckinRecord } from '../utils/healthLog';
-import { colors } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import AppLogo from '../components/AppLogo';
 import QuickActionCard from '../components/QuickActionCard';
@@ -33,6 +33,8 @@ function getPetsSubtitle(pets: Pet[]) {
 }
 
 export default function HomeScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const { session } = useAuth();
   const petsQuery = usePetsQuery();
@@ -184,7 +186,8 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   homeContent: {
     paddingTop: 8,
   },
@@ -292,4 +295,5 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 22,
   },
-});
+  });
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 import ScreenLayout from '../components/ScreenLayout';
 import PetCard from '../components/PetCard';
 import SpeciesSelector from '../components/SpeciesSelector';
@@ -31,6 +31,8 @@ import { ApiError } from '../services/httpClient';
 type PetsListNav = NativeStackNavigationProp<PetsStackParamList, 'PetsList'>;
 
 export default function PetsScreen() {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<PetsListNav>();
   const petsQuery = usePetsQuery();
   const { create, update } = usePetMutations();
@@ -259,7 +261,8 @@ export default function PetsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   loading: {
     alignItems: 'center',
     paddingTop: 48,
@@ -371,4 +374,5 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.7,
   },
-});
+  });
+}

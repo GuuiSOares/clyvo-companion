@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,21 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList } from '../navigation/types';
 import ScreenLayout from '../components/ScreenLayout';
 import AppButton from '../components/AppButton';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors, type CommonStyles, type ThemeMode } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { hasTutorProfile, loadTutorProfile, saveTutorProfile } from '../services/tutorData';
 
 type Props = BottomTabScreenProps<RootTabParamList, 'Settings'>;
 
+const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: 'system', label: 'Sistema' },
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+];
+
 export default function SettingsScreen() {
+  const { colors, commonStyles, mode, setMode } = useTheme();
+  const styles = useMemo(() => createStyles(colors, commonStyles), [colors, commonStyles]);
   const { session, signOut } = useAuth();
   const [nome, setNome] = useState('');
   const [fotoUri, setFotoUri] = useState('');
@@ -111,6 +119,26 @@ export default function SettingsScreen() {
         Nome e foto aparecem só neste aparelho. Pets e registros do dia ficam no prontuário da clínica.
       </Text>
 
+      <View style={styles.themeCard}>
+        <Text style={styles.themeTitle}>Aparência</Text>
+        <View style={styles.themeRow}>
+          {THEME_OPTIONS.map((option) => {
+            const selected = mode === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                style={[styles.themeOption, selected && styles.themeOptionActive]}
+                onPress={() => setMode(option.value)}
+              >
+                <Text style={[styles.themeOptionText, selected && styles.themeOptionTextActive]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {session?.email ? (
         <View style={styles.accountCard}>
           <Text style={styles.accountLabel}>Conta conectada</Text>
@@ -186,7 +214,8 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors, commonStyles: CommonStyles) {
+  return StyleSheet.create({
   statusCard: {
     ...commonStyles.card,
     marginBottom: 20,
@@ -280,4 +309,40 @@ const styles = StyleSheet.create({
   signOutButton: {
     marginTop: 8,
   },
-});
+  themeCard: {
+    ...commonStyles.card,
+    marginBottom: 16,
+    gap: 12,
+  },
+  themeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeOption: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  themeOptionActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.infoBg,
+  },
+  themeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  themeOptionTextActive: {
+    color: colors.accent,
+  },
+  });
+}

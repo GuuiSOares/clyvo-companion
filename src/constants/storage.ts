@@ -5,3 +5,4 @@ export const TUTOR_NAME_KEY = '@clyvo/tutorName';
 export const TUTOR_PROFILE_KEY = '@clyvo/tutorProfile';
 export const PETS_STORAGE_KEY = '@clyvo/pets';
 export const LAST_CHECKIN_KEY = '@clyvo/lastCheckin';
+export const THEME_MODE_KEY = '@clyvo/themeMode';

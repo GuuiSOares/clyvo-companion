@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 
 type Edge = 'top' | 'right' | 'bottom' | 'left';
 
@@ -30,6 +30,8 @@ export default function ScreenLayout({
   keyboard = false,
   contentContainerStyle,
 }: Props) {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const edges: Edge[] = [];
   if (!withHeader) edges.push('top');
   edges.push('left', 'right');
@@ -68,12 +70,14 @@ export default function ScreenLayout({
   return body;
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  flex: {
-    flex: 1,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    flex: {
+      flex: 1,
+    },
+  });
+}

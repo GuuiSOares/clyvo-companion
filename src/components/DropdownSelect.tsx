@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 
 export type SelectOption<T extends string> = {
   value: T;
@@ -26,6 +26,8 @@ export default function DropdownSelect<T extends string>({
   options,
   onChange,
 }: Props<T>) {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [open, setOpen] = useState(false);
 
   const selectedOption = options.find((option) => option.value === value);
@@ -92,94 +94,96 @@ export default function DropdownSelect<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
-  field: {
-    marginBottom: 16,
-  },
-  fieldOpen: {
-    marginBottom: 20,
-  },
-  helperText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 18,
-    marginTop: -4,
-    marginBottom: 10,
-  },
-  selectBox: {
-    width: '100%',
-  },
-  trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    minHeight: 48,
-  },
-  triggerOpen: {
-    borderColor: colors.accent,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  triggerPressed: {
-    opacity: 0.9,
-  },
-  triggerText: {
-    fontSize: 15,
-    color: colors.text,
-    fontWeight: '500',
-    flex: 1,
-  },
-  placeholderText: {
-    color: colors.placeholder,
-    fontWeight: '400',
-  },
-  menu: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: colors.accent,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  optionBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  optionSelected: {
-    backgroundColor: colors.infoBg,
-  },
-  optionPressed: {
-    backgroundColor: colors.surface,
-  },
-  optionContent: {
-    flex: 1,
-    gap: 3,
-  },
-  optionText: {
-    fontSize: 15,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  optionTextSelected: {
-    color: colors.accent,
-  },
-  optionHint: {
-    fontSize: 12,
-    color: colors.textMuted,
-    lineHeight: 16,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    field: {
+      marginBottom: 16,
+    },
+    fieldOpen: {
+      marginBottom: 20,
+    },
+    helperText: {
+      fontSize: 13,
+      color: colors.textMuted,
+      lineHeight: 18,
+      marginTop: -4,
+      marginBottom: 10,
+    },
+    selectBox: {
+      width: '100%',
+    },
+    trigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      minHeight: 48,
+    },
+    triggerOpen: {
+      borderColor: colors.accent,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    triggerPressed: {
+      opacity: 0.9,
+    },
+    triggerText: {
+      fontSize: 15,
+      color: colors.text,
+      fontWeight: '500',
+      flex: 1,
+    },
+    placeholderText: {
+      color: colors.placeholder,
+      fontWeight: '400',
+    },
+    menu: {
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderTopWidth: 0,
+      borderColor: colors.accent,
+      borderBottomLeftRadius: 12,
+      borderBottomRightRadius: 12,
+    },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 10,
+    },
+    optionBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    optionSelected: {
+      backgroundColor: colors.infoBg,
+    },
+    optionPressed: {
+      backgroundColor: colors.surface,
+    },
+    optionContent: {
+      flex: 1,
+      gap: 3,
+    },
+    optionText: {
+      fontSize: 15,
+      color: colors.text,
+      fontWeight: '600',
+    },
+    optionTextSelected: {
+      color: colors.accent,
+    },
+    optionHint: {
+      fontSize: 12,
+      color: colors.textMuted,
+      lineHeight: 16,
+    },
+  });
+}

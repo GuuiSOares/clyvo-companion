@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { useTheme, type AppColors } from '../theme';
 import type { Pet, CheckinRecord } from '../types/pet';
 import { formatMetricValue } from '../constants/healthMetrics';
 import { formatPetSpecies } from '../constants/petSpecies';
@@ -26,11 +26,15 @@ function InfoRow({
   label,
   value,
   highlight,
+  colors,
+  styles,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
   highlight?: boolean;
+  colors: AppColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.infoRow}>
@@ -51,6 +55,8 @@ function getCheckinLabelForPet(checkin: CheckinRecord | null) {
 }
 
 export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSelectPet }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   if (pets.length === 0) {
@@ -100,18 +106,28 @@ export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSele
       ) : null}
 
       <View style={styles.infoList}>
-        <InfoRow icon="paw-outline" label="Pet em foco" value={focusPet.nome} />
-        <InfoRow icon="calendar-outline" label="Nascimento" value={formatPetBirthDate(focusPet.dtNascimento)} />
+        <InfoRow icon="paw-outline" label="Pet em foco" value={focusPet.nome} colors={colors} styles={styles} />
+        <InfoRow
+          icon="calendar-outline"
+          label="Nascimento"
+          value={formatPetBirthDate(focusPet.dtNascimento)}
+          colors={colors}
+          styles={styles}
+        />
         <InfoRow
           icon="clipboard-outline"
           label="Último registro"
           value={getCheckinLabelForPet(petCheckin)}
           highlight={hasCheckin}
+          colors={colors}
+          styles={styles}
         />
         <InfoRow
           icon="document-text-outline"
           label="Prontuário"
           value="Abra Meus Pets ou Prontuário para mais detalhes"
+          colors={colors}
+          styles={styles}
         />
       </View>
 
@@ -173,7 +189,8 @@ export default function HealthOverviewCard({ pets, focusPet, lastCheckin, onSele
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 24,
@@ -378,4 +395,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
   },
-});
+  });
+}

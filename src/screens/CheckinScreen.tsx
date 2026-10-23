@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import {
   type HealthMetric,
 } from '../constants/healthMetrics';
 import { formatPetSpecies } from '../constants/petSpecies';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors, type CommonStyles } from '../theme';
 import type { RootTabParamList } from '../navigation/types';
 import type { Pet } from '../types/pet';
 import FlowHintCard from '../components/FlowHintCard';
@@ -33,6 +33,8 @@ import { formatLogDate, formatLogSummary, type HealthLog } from '../utils/health
 import { ApiError } from '../services/httpClient';
 
 export default function CheckinScreen() {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors, commonStyles), [colors, commonStyles]);
   const navigation = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const petsQuery = usePetsQuery();
   const pets = petsQuery.data ?? [];
@@ -359,7 +361,8 @@ export default function CheckinScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors, commonStyles: CommonStyles) {
+  return StyleSheet.create({
   introCard: {
     ...commonStyles.card,
     marginBottom: 20,
@@ -517,4 +520,5 @@ const styles = StyleSheet.create({
   logDelete: {
     color: colors.danger,
   },
-});
+  });
+}

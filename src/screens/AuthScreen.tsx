@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,11 +14,13 @@ import { useAuth } from '../context/AuthContext';
 import { loginAccount, registerAccount } from '../services/authData';
 import { saveTutorProfile } from '../services/tutorData';
 import type { AuthSession } from '../types/auth';
-import { colors, commonStyles } from '../theme';
+import { useTheme, type AppColors, type CommonStyles } from '../theme';
 
 type AuthMode = 'login' | 'register';
 
 export default function AuthScreen() {
+  const { colors, commonStyles } = useTheme();
+  const styles = useMemo(() => createStyles(colors, commonStyles), [colors, commonStyles]);
   const { signIn } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [nome, setNome] = useState('');
@@ -197,7 +199,8 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors, commonStyles: CommonStyles) {
+  return StyleSheet.create({
   content: {
     paddingTop: 24,
     paddingBottom: 40,
@@ -256,4 +259,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-});
+  });
+}

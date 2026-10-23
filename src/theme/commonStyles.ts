@@ -1,7 +1,8 @@
 import { StyleSheet } from 'react-native';
-import { colors } from './colors';
+import type { AppColors } from './colors';
 
-export const commonStyles = StyleSheet.create({
+export function createCommonStyles(colors: AppColors) {
+  return StyleSheet.create({
   flex: {
     flex: 1,
     backgroundColor: colors.background,
@@ -176,4 +177,7 @@ export const commonStyles = StyleSheet.create({
   sectionGap: {
     marginBottom: 16,
   },
-});
+  });
+}
+
+export type CommonStyles = ReturnType<typeof createCommonStyles>;

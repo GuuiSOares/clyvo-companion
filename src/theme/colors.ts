@@ -1,4 +1,42 @@
-export const colors = {
+export type AppColors = {
+  background: string;
+  surface: string;
+  surfaceElevated: string;
+  border: string;
+  borderSubtle: string;
+  mint: string;
+  teal: string;
+  tealDark: string;
+  charcoal: string;
+  primary: string;
+  primaryLight: string;
+  primaryPressed: string;
+  accent: string;
+  text: string;
+  textMuted: string;
+  textSecondary: string;
+  textNav: string;
+  placeholder: string;
+  textOnDark: string;
+  inputBg: string;
+  borderInput: string;
+  successBg: string;
+  successBorder: string;
+  successText: string;
+  successMuted: string;
+  infoBg: string;
+  infoBorder: string;
+  infoTitle: string;
+  infoLabel: string;
+  infoValue: string;
+  danger: string;
+  dangerBg: string;
+  dangerBorder: string;
+  iconBgTeal: string;
+  iconBgGreen: string;
+};
+
+export const darkColors: AppColors = {
   background: '#0b1220',
   surface: '#141c2e',
   surfaceElevated: '#1a2438',
@@ -40,4 +78,48 @@ export const colors = {
 
   iconBgTeal: '#1a2438',
   iconBgGreen: '#052e16',
+};
+
+export const lightColors: AppColors = {
+  background: '#f4f7fb',
+  surface: '#ffffff',
+  surfaceElevated: '#eef3f9',
+  border: '#d5deea',
+  borderSubtle: '#e6edf5',
+
+  mint: '#dbeafe',
+  teal: '#2563eb',
+  tealDark: '#1d4ed8',
+  charcoal: '#1e3a8a',
+
+  primary: '#1e3a8a',
+  primaryLight: '#2563eb',
+  primaryPressed: '#1d4ed8',
+  accent: '#1d4ed8',
+
+  text: '#0f172a',
+  textMuted: '#64748b',
+  textSecondary: '#334155',
+  textNav: '#64748b',
+  placeholder: '#94a3b8',
+  textOnDark: '#ffffff',
+
+  inputBg: '#ffffff',
+  borderInput: '#cbd5e1',
+
+  successBg: '#ecfdf3',
+  successBorder: '#86efac',
+  successText: '#166534',
+  successMuted: '#15803d',
+  infoBg: '#eff6ff',
+  infoBorder: '#bfdbfe',
+  infoTitle: '#1e3a8a',
+  infoLabel: '#1d4ed8',
+  infoValue: '#1e293b',
+  danger: '#dc2626',
+  dangerBg: '#fef2f2',
+  dangerBorder: '#fecaca',
+
+  iconBgTeal: '#dbeafe',
+  iconBgGreen: '#dcfce7',
 };
