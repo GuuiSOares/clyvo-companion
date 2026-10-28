@@ -103,11 +103,7 @@ export default function SettingsScreen() {
   };
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch {
-      showAlert('Erro', 'Não foi possível sair da conta.');
-    }
+    await signOut();
   };
 
   const initial = nome.trim().charAt(0).toUpperCase() || 'T';

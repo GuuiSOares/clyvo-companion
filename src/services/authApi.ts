@@ -1,16 +1,16 @@
-import type { ApiLoginBody, ApiUsuario, ApiUsuarioBody } from '../types/api';
-import { apiRequest, setApiCredentials } from './httpClient';
+import type { ApiAuthTokenResponse, ApiLoginBody, ApiUsuario, ApiUsuarioBody } from '../types/api';
+import { apiRequest, setApiTokens, tokensFromAuthResponse } from './httpClient';
 
-export async function loginWithApi(email: string, senha: string): Promise<ApiUsuario> {
+export async function loginWithApi(email: string, senha: string): Promise<ApiAuthTokenResponse> {
   const body: ApiLoginBody = { email, senha };
-  const user = await apiRequest<ApiUsuario>('/auth/login', {
+  const data = await apiRequest<ApiAuthTokenResponse>('/auth/login', {
     method: 'POST',
     body,
     auth: false,
   });
 
-  setApiCredentials({ email, senha });
-  return user;
+  setApiTokens(tokensFromAuthResponse(data));
+  return data;
 }
 
 export async function fetchCurrentUser(): Promise<ApiUsuario> {
@@ -21,7 +21,7 @@ export async function logoutFromApi(): Promise<void> {
   try {
     await apiRequest<void>('/auth/logout', { method: 'POST' });
   } finally {
-    setApiCredentials(null);
+    setApiTokens(null);
   }
 }
 

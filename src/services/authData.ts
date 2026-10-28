@@ -1,16 +1,44 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CREDENTIALS_KEY, AUTH_ACCOUNTS_KEY, AUTH_SESSION_KEY } from '../constants/storage';
+import * as SecureStore from 'expo-secure-store';
+import {
+  API_CREDENTIALS_KEY,
+  API_TOKENS_KEY,
+  AUTH_ACCOUNTS_KEY,
+  AUTH_SESSION_KEY,
+} from '../constants/storage';
 import type { AuthSession } from '../types/auth';
-import type { ApiCredentials } from './httpClient';
-import { ApiError, setApiCredentials } from './httpClient';
+import type { ApiTokens } from './httpClient';
+import { ApiError, setApiTokens, setApiTokensListener } from './httpClient';
 import { loginWithApi, registerTutor } from './authApi';
 import { isValidEmail, isValidPassword, normalizeEmail } from '../utils/validation';
 
-async function persistSession(session: AuthSession, senha: string): Promise<void> {
-  const credentials: ApiCredentials = { email: session.email, senha };
+async function persistTokens(tokens: ApiTokens | null): Promise<void> {
+  try {
+    if (!tokens) {
+      await SecureStore.deleteItemAsync(API_TOKENS_KEY);
+      return;
+    }
+
+    await SecureStore.setItemAsync(API_TOKENS_KEY, JSON.stringify(tokens));
+  } catch {
+    // Sem SecureStore o app segue com o token só na memória da sessão.
+  }
+}
+
+setApiTokensListener((next) => {
+  void persistTokens(next);
+});
+
+async function clearStoredTokens(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(API_TOKENS_KEY);
+  } catch {
+    // Logout local não depende do SecureStore.
+  }
+}
+
+async function persistSession(session: AuthSession): Promise<void> {
   await AsyncStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
-  await AsyncStorage.setItem(API_CREDENTIALS_KEY, JSON.stringify(credentials));
-  setApiCredentials(credentials);
 }
 
 function toSession(user: {
@@ -36,21 +64,32 @@ export async function loadAuthSession(): Promise<AuthSession | null> {
   return session;
 }
 
-export async function loadApiCredentials(): Promise<ApiCredentials | null> {
-  const stored = await AsyncStorage.getItem(API_CREDENTIALS_KEY);
-  if (!stored) return null;
-  return JSON.parse(stored) as ApiCredentials;
+async function loadApiTokens(): Promise<ApiTokens | null> {
+  try {
+    const stored = await SecureStore.getItemAsync(API_TOKENS_KEY);
+    if (!stored) return null;
+
+    const tokens = JSON.parse(stored) as ApiTokens;
+    if (!tokens?.accessToken || !tokens?.refreshToken || !tokens?.expiresAt) {
+      return null;
+    }
+    return tokens;
+  } catch {
+    return null;
+  }
 }
 
 export async function restoreApiSession(): Promise<AuthSession | null> {
-  const [credentials, session] = await Promise.all([loadApiCredentials(), loadAuthSession()]);
+  await AsyncStorage.removeItem(API_CREDENTIALS_KEY);
 
-  if (!credentials || !session) {
+  const [tokens, session] = await Promise.all([loadApiTokens(), loadAuthSession()]);
+
+  if (!tokens || !session) {
     await clearAuthData();
     return null;
   }
 
-  setApiCredentials(credentials);
+  setApiTokens(tokens);
   return session;
 }
 
@@ -112,18 +151,18 @@ export async function loginAccount(
   }
 
   try {
-    const user = await loginWithApi(normalizedEmail, password);
+    const auth = await loginWithApi(normalizedEmail, password);
 
-    if (user.tpPerfil !== 'TUTOR') {
-      setApiCredentials(null);
+    if (auth.tpPerfil !== 'TUTOR') {
+      setApiTokens(null);
       return {
         ok: false,
         message: 'Este aplicativo é do tutor. Use uma conta com perfil TUTOR.',
       };
     }
 
-    const session = toSession(user);
-    await persistSession(session, password);
+    const session = toSession(auth);
+    await persistSession(session);
     return { ok: true, session };
   } catch (error) {
     return {
@@ -134,11 +173,21 @@ export async function loginAccount(
 }
 
 export async function logoutAuth(): Promise<void> {
-  setApiCredentials(null);
-  await AsyncStorage.multiRemove([AUTH_SESSION_KEY, API_CREDENTIALS_KEY]);
+  setApiTokens(null);
+  try {
+    await AsyncStorage.multiRemove([AUTH_SESSION_KEY, API_CREDENTIALS_KEY]);
+  } catch {
+    // Sessão em memória já foi limpa no AuthContext.
+  }
+  await clearStoredTokens();
 }
 
 export async function clearAuthData(): Promise<void> {
-  setApiCredentials(null);
-  await AsyncStorage.multiRemove([AUTH_ACCOUNTS_KEY, AUTH_SESSION_KEY, API_CREDENTIALS_KEY]);
+  setApiTokens(null);
+  try {
+    await AsyncStorage.multiRemove([AUTH_ACCOUNTS_KEY, AUTH_SESSION_KEY, API_CREDENTIALS_KEY]);
+  } catch {
+    // Ignora falha de limpeza local.
+  }
+  await clearStoredTokens();
 }

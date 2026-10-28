@@ -12,6 +12,17 @@ export type ApiLoginBody = {
   senha: string;
 };
 
+export type ApiAuthTokenResponse = ApiUsuario & {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+};
+
+export type ApiRefreshBody = {
+  refreshToken: string;
+};
+
 export type ApiUsuarioBody = {
   nomeUsuario: string;
   email: string;
